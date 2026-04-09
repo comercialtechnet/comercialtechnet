@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -18,18 +18,44 @@ export default function Register() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!perfil || !nome) {
       toast.error('Preencha todos os campos obrigatórios.');
       return;
     }
+    if (password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nome_vinculado: nome,
+            perfil: perfil,
+          },
+        },
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      // Sign out immediately so the pending user doesn't stay logged in
+      await supabase.auth.signOut();
       setSubmitted(true);
-    }, 800);
+    } catch (err: any) {
+      toast.error('Erro ao criar conta. Tente novamente.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -40,7 +66,7 @@ export default function Register() {
             <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
             <h2 className="text-xl font-bold text-foreground mb-2">Solicitação enviada!</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Sua solicitação de cadastro foi recebida. Aguarde a aprovação do administrador para acessar o sistema.
+              Sua conta foi criada. Verifique seu email para confirmar e aguarde a aprovação do administrador para acessar o sistema.
             </p>
             <Button variant="outline" onClick={() => navigate('/')}>Voltar ao login</Button>
           </div>
