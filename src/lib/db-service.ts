@@ -1,5 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseExternal } from '@/integrations/supabase/external-client';
 import { Venda, ItemVenda, MonthlyGoal } from './types';
+
+// Auth stays on Cloud (supabase), data operations use external DB (supabaseExternal)
 
 // ─── Importação: salvar vendas e itens no banco ───
 
@@ -14,7 +17,7 @@ export async function saveImportToDatabase(
   if (!user) throw new Error('Usuário não autenticado');
 
   // 1. Create importacao record
-  const { data: importacao, error: importErr } = await supabase
+  const { data: importacao, error: importErr } = await supabaseExternal
     .from('importacoes')
     .insert({
       nome_arquivo: nomeArquivo,
@@ -70,7 +73,7 @@ export async function saveImportToDatabase(
       chave_deduplicacao: v.chave_deduplicacao,
     }));
 
-    const { data: insertedVendas, error: vendaErr } = await supabase
+    const { data: insertedVendas, error: vendaErr } = await supabaseExternal
       .from('vendas')
       .upsert(batch, { onConflict: 'chave_deduplicacao' })
       .select('id, id_venda');
@@ -98,7 +101,7 @@ export async function saveImportToDatabase(
     }).filter(Boolean);
 
     if (batch.length > 0) {
-      const { error: itemErr } = await supabase
+      const { error: itemErr } = await supabaseExternal
         .from('itens_venda')
         .insert(batch as any[]);
 
@@ -113,7 +116,7 @@ export async function saveImportToDatabase(
 
 export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens: ItemVenda[] } | null> {
   // Load vendas
-  const { data: vendasRaw, error: vendaErr } = await supabase
+  const { data: vendasRaw, error: vendaErr } = await supabaseExternal
     .from('vendas')
     .select('*')
     .order('data_instalacao', { ascending: false })
@@ -127,7 +130,7 @@ export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens
 
   for (let i = 0; i < vendaIds.length; i += 500) {
     const batch = vendaIds.slice(i, i + 500);
-    const { data: itensRaw } = await supabase
+    const { data: itensRaw } = await supabaseExternal
       .from('itens_venda')
       .select('*')
       .in('venda_id', batch);
@@ -194,7 +197,7 @@ export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens
 // ─── Metas mensais ───
 
 export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoal>> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseExternal
     .from('metas_mensais')
     .select('*');
 
@@ -227,7 +230,7 @@ export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
 
   if (rows.length === 0) return;
 
-  const { error } = await supabase
+  const { error } = await supabaseExternal
     .from('metas_mensais')
     .upsert(rows, { onConflict: 'periodo_mes,periodo_ano' });
 
@@ -236,7 +239,7 @@ export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
 
 export async function deleteMetaFromDatabase(key: string) {
   const [year, month] = key.split('-').map(Number);
-  await supabase
+  await supabaseExternal
     .from('metas_mensais')
     .delete()
     .eq('periodo_mes', month)
