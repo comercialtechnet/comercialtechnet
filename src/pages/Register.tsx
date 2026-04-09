@@ -79,17 +79,10 @@ export default function Register() {
               </Select>
             </div>
 
-            {perfil && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Nome vinculado</Label>
-                <Select value={nome} onValueChange={setNome}>
-                  <SelectTrigger><SelectValue placeholder="Buscar nome..." /></SelectTrigger>
-                  <SelectContent>
-                    {nomes.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">Nome</Label>
+              <Input type="text" placeholder="Seu nome completo" value={nome} onChange={e => setNome(e.target.value)} required />
+            </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">Email</Label>
