@@ -115,8 +115,8 @@ export function calcVariation(current: number, previous: number): number | undef
 export function useFilteredData() {
   const { filters, importedData } = useFilters();
 
-  const sourceVendas = importedData ? importedData.vendas : mockVendas;
-  const sourceItens = importedData ? importedData.itens : mockItens;
+  const sourceVendas = importedData ? importedData.vendas : [];
+  const sourceItens = importedData ? importedData.itens : [];
 
   const filteredVendas = useMemo(() => {
     return filterVendas(sourceVendas, sourceItens, filters);
