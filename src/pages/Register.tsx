@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseExternal } from '@/integrations/supabase/external-client';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error } = await supabaseExternal.auth.signUp({
         email,
         password,
         options: {
@@ -48,7 +48,7 @@ export default function Register() {
       }
 
       // Sign out immediately so the pending user doesn't stay logged in
-      await supabase.auth.signOut();
+      await supabaseExternal.auth.signOut();
       setSubmitted(true);
     } catch (err: any) {
       toast.error('Erro ao criar conta. Tente novamente.');
