@@ -49,8 +49,12 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   const [importedData, setImportedData] = useState<ImportedData | null>(null);
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true);
   const [monthlyGoals, setMonthlyGoals] = useState<Record<string, MonthlyGoal>>(() => {
-    const saved = localStorage.getItem('technet-monthly-goals');
-    return saved ? JSON.parse(saved) : { ...INITIAL_MONTHLY_GOALS };
+    try {
+      const saved = localStorage.getItem('technet-monthly-goals');
+      return saved ? JSON.parse(saved) : { ...INITIAL_MONTHLY_GOALS };
+    } catch {
+      return { ...INITIAL_MONTHLY_GOALS };
+    }
   });
   const compManualRef = useRef(false);
 
