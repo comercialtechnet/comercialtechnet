@@ -1,5 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseExternal } from '@/integrations/supabase/external-client';
 import { Venda, ItemVenda, MonthlyGoal } from './types';
+
+// Auth stays on Cloud (supabase), data operations use external DB (supabaseExternal)
 
 // ─── Importação: salvar vendas e itens no banco ───
 
