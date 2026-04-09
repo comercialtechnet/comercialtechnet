@@ -66,7 +66,7 @@ export default function Register() {
             <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
             <h2 className="text-xl font-bold text-foreground mb-2">Solicitação enviada!</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Sua conta foi criada. Verifique seu email para confirmar e aguarde a aprovação do administrador para acessar o sistema.
+              Sua conta foi criada com sucesso. Aguarde a aprovação do administrador para acessar o sistema.
             </p>
             <Button variant="outline" onClick={() => navigate('/')}>Voltar ao login</Button>
           </div>
