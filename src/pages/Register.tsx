@@ -8,13 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const vendedoresDisponiveis = [
-  'Ana Silva', 'Bruno Costa', 'Camila Santos', 'Diego Oliveira',
-  'Elena Rodrigues', 'Felipe Almeida', 'Gabriela Souza',
-  'Hugo Martins', 'Isabela Ferreira', 'João Pedro Lima',
-];
-
-const supervisoresDisponiveis = ['Carlos Mendes', 'Fernanda Lima', 'Roberto Nunes'];
 
 export default function Register() {
   const navigate = useNavigate();
