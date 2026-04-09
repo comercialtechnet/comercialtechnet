@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { mockVendas, mockItens } from './mock-data';
 import { useFilters } from './filters-context';
 import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
 
