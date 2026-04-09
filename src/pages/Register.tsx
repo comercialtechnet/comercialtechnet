@@ -8,13 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const vendedoresDisponiveis = [
-  'Ana Silva', 'Bruno Costa', 'Camila Santos', 'Diego Oliveira',
-  'Elena Rodrigues', 'Felipe Almeida', 'Gabriela Souza',
-  'Hugo Martins', 'Isabela Ferreira', 'João Pedro Lima',
-];
-
-const supervisoresDisponiveis = ['Carlos Mendes', 'Fernanda Lima', 'Roberto Nunes'];
 
 export default function Register() {
   const navigate = useNavigate();
@@ -25,7 +18,6 @@ export default function Register() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const nomes = perfil === 'supervisor' ? supervisoresDisponiveis : vendedoresDisponiveis;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,17 +79,10 @@ export default function Register() {
               </Select>
             </div>
 
-            {perfil && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Nome vinculado</Label>
-                <Select value={nome} onValueChange={setNome}>
-                  <SelectTrigger><SelectValue placeholder="Buscar nome..." /></SelectTrigger>
-                  <SelectContent>
-                    {nomes.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">Nome</Label>
+              <Input type="text" placeholder="Seu nome completo" value={nome} onChange={e => setNome(e.target.value)} required />
+            </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">Email</Label>
