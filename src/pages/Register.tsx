@@ -18,7 +18,6 @@ export default function Register() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [nome, setNome] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
