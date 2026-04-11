@@ -120,7 +120,7 @@ export interface DashboardStats {
   supervisoresAtivos: number;
   vendasInternet: number;
   porCategoria: Record<string, { faturamento: number; quantidade: number }>;
-  porVendedor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number }>;
+  porVendedor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendasInternet: number }>;
   porSupervisor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendedores: Set<string> }>;
   porComboTipo: Record<string, number>;
 }
