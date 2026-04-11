@@ -139,13 +139,13 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
   .status-approved {
-    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+    @apply bg-emerald-500/10 text-emerald-600 border border-emerald-500/20;
   }
   .status-pending {
-    @apply bg-amber-50 text-amber-700 border border-amber-200;
+    @apply bg-amber-500/10 text-amber-600 border border-amber-500/20;
   }
   .status-rejected {
-    @apply bg-red-50 text-red-700 border border-red-200;
+    @apply bg-red-500/10 text-red-600 border border-red-500/20;
   }
   .scrollbar-none {
     -ms-overflow-style: none;
