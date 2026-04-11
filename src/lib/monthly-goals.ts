@@ -2,30 +2,13 @@ import { MonthlyGoal } from './types';
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-// Metas mensais iniciais: chave no formato "YYYY-MM"
-export const INITIAL_MONTHLY_GOALS: Record<string, MonthlyGoal> = {
-  '2025-01': { meta_faturamento: 100000, meta_total_vendas: 200, meta_vendas_virtua: 120 },
-  '2025-02': { meta_faturamento: 110000, meta_total_vendas: 220, meta_vendas_virtua: 130 },
-  '2025-03': { meta_faturamento: 120000, meta_total_vendas: 250, meta_vendas_virtua: 150 },
-  '2025-04': { meta_faturamento: 115000, meta_total_vendas: 230, meta_vendas_virtua: 140 },
-  '2025-05': { meta_faturamento: 125000, meta_total_vendas: 260, meta_vendas_virtua: 155 },
-  '2025-06': { meta_faturamento: 130000, meta_total_vendas: 270, meta_vendas_virtua: 160 },
-  '2025-07': { meta_faturamento: 120000, meta_total_vendas: 240, meta_vendas_virtua: 145 },
-  '2025-08': { meta_faturamento: 135000, meta_total_vendas: 280, meta_vendas_virtua: 165 },
-  '2025-09': { meta_faturamento: 140000, meta_total_vendas: 290, meta_vendas_virtua: 170 },
-  '2025-10': { meta_faturamento: 145000, meta_total_vendas: 300, meta_vendas_virtua: 175 },
-  '2025-11': { meta_faturamento: 150000, meta_total_vendas: 310, meta_vendas_virtua: 180 },
-  '2025-12': { meta_faturamento: 160000, meta_total_vendas: 330, meta_vendas_virtua: 190 },
-  '2026-01': { meta_faturamento: 140000, meta_total_vendas: 280, meta_vendas_virtua: 165 },
-  '2026-02': { meta_faturamento: 145000, meta_total_vendas: 290, meta_vendas_virtua: 170 },
-  '2026-03': { meta_faturamento: 155000, meta_total_vendas: 310, meta_vendas_virtua: 180 },
-  '2026-04': { meta_faturamento: 160000, meta_total_vendas: 320, meta_vendas_virtua: 185 },
-};
+// No initial goals — everything comes from the database
+export const INITIAL_MONTHLY_GOALS: Record<string, MonthlyGoal> = {};
 
 const DEFAULT_GOAL: MonthlyGoal = {
-  meta_faturamento: 120000,
-  meta_total_vendas: 250,
-  meta_vendas_virtua: 150,
+  meta_faturamento: 0,
+  meta_total_vendas: 0,
+  meta_vendas_virtua: 0,
 };
 
 export function getMonthlyGoalFromStore(goals: Record<string, MonthlyGoal>, dataInicio?: string): MonthlyGoal {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Zap, Upload, LogOut, Menu, X, FileSpreadsheet } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Zap, Upload, LogOut, Menu, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useFilters } from '@/lib/filters-context';
@@ -39,12 +39,29 @@ const tabComponents: Record<DashboardTab, React.FC> = {
   admin: TabAdmin,
 };
 
+function useTheme() {
+  const [dark, setDark] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = localStorage.getItem('technet-theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem('technet-theme', dark ? 'dark' : 'light');
+  }, [dark]);
+
+  return { dark, toggle: () => setDark(d => !d) };
+}
+
 export default function Dashboard() {
-  const { activeTab, setActiveTab, importedData, setImportedData, isUsingImportedData } = useFilters();
+  const { activeTab, setActiveTab } = useFilters();
   const navigate = useNavigate();
   const ActiveComponent = tabComponents[activeTab];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const { dark, toggle: toggleTheme } = useTheme();
 
   const handleTabChange = (id: DashboardTab) => {
     setActiveTab(id);
@@ -66,6 +83,9 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button variant="outline" size="sm" className="gap-2 hidden sm:inline-flex" onClick={() => setImportOpen(true)}>
               <Upload className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Importar XLSX</span>
@@ -158,21 +178,6 @@ export default function Dashboard() {
           </nav>
         </SheetContent>
       </Sheet>
-
-      {/* Import banner */}
-      {isUsingImportedData && importedData && (
-        <div className="bg-primary/10 border-b border-primary/20 px-3 sm:px-6 py-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs font-medium text-primary truncate">
-              {importedData.nomeArquivo} — {importedData.vendas.length} vendas
-            </span>
-          </div>
-          <Button variant="ghost" size="sm" className="h-6 text-xs text-primary shrink-0" onClick={() => setImportedData(null)}>
-            <X className="h-3 w-3 mr-1" /> Remover
-          </Button>
-        </div>
-      )}
 
       {/* Filters */}
       <FilterBar />

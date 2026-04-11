@@ -33,7 +33,13 @@ export function TabAdmin() {
   // Goals editing state
   const [editingGoals, setEditingGoals] = useState<Record<string, MonthlyGoal>>({});
   const [isEditingGoals, setIsEditingGoals] = useState(false);
-  const [newMonthYear, setNewMonthYear] = useState('');
+
+  // Add goal dialog
+  const [addGoalOpen, setAddGoalOpen] = useState(false);
+  const [newGoalMonth, setNewGoalMonth] = useState('');
+  const [newGoalFat, setNewGoalFat] = useState('');
+  const [newGoalVendas, setNewGoalVendas] = useState('');
+  const [newGoalVirtua, setNewGoalVirtua] = useState('');
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -49,8 +55,6 @@ export function TabAdmin() {
         return;
       }
 
-      // Try to get emails from auth (admin only via edge function or user_metadata)
-      // For now we show the profile data
       const mapped: ProfileUser[] = (profiles || []).map(p => ({
         id: p.id,
         nome_vinculado: p.nome_vinculado,
@@ -87,7 +91,7 @@ export function TabAdmin() {
       toast.success('Metas salvas com sucesso!');
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao salvar metas no banco. Salvo localmente.');
+      toast.error('Erro ao salvar metas no banco.');
     }
   };
 
@@ -113,19 +117,38 @@ export function TabAdmin() {
     deleteMetaFromDatabase(key).catch(console.error);
   };
 
-  const addGoalMonth = () => {
-    if (!newMonthYear) return;
-    const [year, month] = newMonthYear.split('-');
+  const handleAddGoal = async () => {
+    if (!newGoalMonth) return;
+    const [year, month] = newGoalMonth.split('-');
     const key = generateMonthKey(parseInt(year), parseInt(month));
-    if (editingGoals[key]) {
-      toast.error('Este mês já existe nas metas.');
+
+    if (monthlyGoals[key]) {
+      toast.error('Este mês já possui meta cadastrada.');
       return;
     }
-    setEditingGoals(prev => ({
-      ...prev,
-      [key]: { meta_faturamento: 100000, meta_total_vendas: 200, meta_vendas_virtua: 120 },
-    }));
-    setNewMonthYear('');
+
+    const newGoal: MonthlyGoal = {
+      meta_faturamento: parseFloat(newGoalFat) || 0,
+      meta_total_vendas: parseFloat(newGoalVendas) || 0,
+      meta_vendas_virtua: parseFloat(newGoalVirtua) || 0,
+    };
+
+    const updated = { ...monthlyGoals, [key]: newGoal };
+    setMonthlyGoals(updated);
+
+    try {
+      await saveMetasToDatabase({ [key]: newGoal });
+      toast.success(`Meta de ${formatMonthKey(key)} adicionada!`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar meta.');
+    }
+
+    setAddGoalOpen(false);
+    setNewGoalMonth('');
+    setNewGoalFat('');
+    setNewGoalVendas('');
+    setNewGoalVirtua('');
   };
 
   const approveUser = async (id: string) => {
@@ -143,7 +166,6 @@ export function TabAdmin() {
       return;
     }
 
-    // Also add role to user_roles
     const user = users.find(u => u.id === id);
     if (user) {
       await supabase
@@ -205,33 +227,26 @@ export function TabAdmin() {
             <Target className="h-4 w-4 text-primary" />
             Metas Mensais
           </h3>
-          {!isEditingGoals ? (
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={startEditingGoals}>
-              Editar Metas
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddGoalOpen(true)}>
+              <Plus className="h-3 w-3" /> Adicionar Meta
             </Button>
-          ) : (
-            <div className="flex gap-1">
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={cancelEditGoals}>Cancelar</Button>
-              <Button size="sm" className="h-7 text-xs gap-1" onClick={saveGoals}>
-                <Save className="h-3 w-3" /> Salvar
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {isEditingGoals && (
-          <div className="flex items-center gap-2 mb-3 p-2 bg-surface rounded-lg">
-            <Input
-              type="month"
-              className="h-7 text-xs w-40"
-              value={newMonthYear}
-              onChange={e => setNewMonthYear(e.target.value)}
-            />
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={addGoalMonth} disabled={!newMonthYear}>
-              <Plus className="h-3 w-3" /> Adicionar Mês
-            </Button>
+            {!isEditingGoals ? (
+              sortedGoalKeys.length > 0 && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={startEditingGoals}>
+                  Editar Metas
+                </Button>
+              )
+            ) : (
+              <>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={cancelEditGoals}>Cancelar</Button>
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={saveGoals}>
+                  <Save className="h-3 w-3" /> Salvar
+                </Button>
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Desktop table */}
         <div className="hidden md:block overflow-auto">
@@ -275,7 +290,7 @@ export function TabAdmin() {
               {sortedGoalKeys.length === 0 && (
                 <tr>
                   <td colSpan={isEditingGoals ? 5 : 4} className="text-center text-xs text-muted-foreground py-8">
-                    Nenhuma meta configurada. Clique em "Editar Metas" para adicionar.
+                    Nenhuma meta configurada. Clique em "Adicionar Meta" para começar.
                   </td>
                 </tr>
               )}
@@ -336,6 +351,38 @@ export function TabAdmin() {
           )}
         </div>
       </div>
+
+      {/* Add Goal Dialog */}
+      <Dialog open={addGoalOpen} onOpenChange={setAddGoalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Adicionar Meta</DialogTitle>
+            <DialogDescription>Preencha os dados da meta mensal.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">Mês/Ano</label>
+              <Input type="month" className="mt-1" value={newGoalMonth} onChange={e => setNewGoalMonth(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Meta Faturamento (R$)</label>
+              <Input type="number" className="mt-1" placeholder="Ex: 100000" value={newGoalFat} onChange={e => setNewGoalFat(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Meta Total Vendas</label>
+              <Input type="number" className="mt-1" placeholder="Ex: 200" value={newGoalVendas} onChange={e => setNewGoalVendas(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Meta Vendas Internet</label>
+              <Input type="number" className="mt-1" placeholder="Ex: 120" value={newGoalVirtua} onChange={e => setNewGoalVirtua(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddGoalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAddGoal} disabled={!newGoalMonth}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Pending approvals */}
       {loadingUsers ? (
