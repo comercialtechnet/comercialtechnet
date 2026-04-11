@@ -75,13 +75,14 @@ function computeStats(vendas: Venda[], itens: ItemVenda[]): DashboardStats {
     porCategoria[it.categoria_principal].quantidade += 1;
   });
 
-  const porVendedor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number }> = {};
+  const porVendedor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendasInternet: number }> = {};
   vendas.forEach(v => {
-    if (!porVendedor[v.vendedor]) porVendedor[v.vendedor] = { faturamento: 0, vendas: 0, produtos: 0, combos: 0 };
+    if (!porVendedor[v.vendedor]) porVendedor[v.vendedor] = { faturamento: 0, vendas: 0, produtos: 0, combos: 0, vendasInternet: 0 };
     porVendedor[v.vendedor].faturamento += v.valor_total;
     porVendedor[v.vendedor].vendas += 1;
     porVendedor[v.vendedor].produtos += v.quantidade_itens;
     if (v.e_combo) porVendedor[v.vendedor].combos += 1;
+    if (v.possui_internet) porVendedor[v.vendedor].vendasInternet += 1;
   });
 
   const porSupervisor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendedores: Set<string> }> = {};
