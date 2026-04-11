@@ -4,6 +4,55 @@ import { Venda, ItemVenda, MonthlyGoal } from './types';
 // All operations (auth + data) use the external Supabase project
 const supabase = supabaseExternal;
 
+// ─── Helper: fetch all rows bypassing 1000-row limit ───
+
+async function fetchAll<T>(
+  table: string,
+  query: {
+    select?: string;
+    order?: { column: string; ascending: boolean };
+    filters?: Array<{ column: string; op: string; value: any }>;
+  } = {}
+): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  let allData: T[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let q = supabaseExternal.from(table).select(query.select || '*');
+    
+    if (query.order) {
+      q = q.order(query.order.column, { ascending: query.order.ascending });
+    }
+    if (query.filters) {
+      for (const f of query.filters) {
+        if (f.op === 'in') {
+          q = q.in(f.column, f.value);
+        } else if (f.op === 'eq') {
+          q = q.eq(f.column, f.value);
+        }
+      }
+    }
+
+    q = q.range(from, from + PAGE_SIZE - 1);
+
+    const { data, error } = await q;
+    if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
+    
+    const rows = (data || []) as T[];
+    allData = [...allData, ...rows];
+
+    if (rows.length < PAGE_SIZE) {
+      hasMore = false;
+    } else {
+      from += PAGE_SIZE;
+    }
+  }
+
+  return allData;
+}
+
 // ─── Importação: salvar vendas e itens no banco ───
 
 export async function saveImportToDatabase(
@@ -115,27 +164,23 @@ export async function saveImportToDatabase(
 // ─── Carregar dados do banco ───
 
 export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens: ItemVenda[] } | null> {
-  // Load vendas
-  const { data: vendasRaw, error: vendaErr } = await supabaseExternal
-    .from('vendas')
-    .select('*')
-    .order('data_instalacao', { ascending: false })
-    .limit(10000);
+  // Load ALL vendas using pagination
+  const vendasRaw = await fetchAll<any>('vendas', {
+    order: { column: 'data_instalacao', ascending: false },
+  });
 
-  if (vendaErr || !vendasRaw || vendasRaw.length === 0) return null;
+  if (!vendasRaw || vendasRaw.length === 0) return null;
 
-  // Load itens for these vendas
+  // Load ALL itens using pagination (fetch in batches by venda_id)
   const vendaIds = vendasRaw.map(v => v.id);
   let allItens: any[] = [];
 
   for (let i = 0; i < vendaIds.length; i += 500) {
     const batch = vendaIds.slice(i, i + 500);
-    const { data: itensRaw } = await supabaseExternal
-      .from('itens_venda')
-      .select('*')
-      .in('venda_id', batch);
-
-    if (itensRaw) allItens = [...allItens, ...itensRaw];
+    const itensPage = await fetchAll<any>('itens_venda', {
+      filters: [{ column: 'venda_id', op: 'in', value: batch }],
+    });
+    allItens = [...allItens, ...itensPage];
   }
 
   // Map DB rows to app types
