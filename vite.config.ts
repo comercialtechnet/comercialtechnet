@@ -4,17 +4,17 @@ import path from "path";
 
 export default defineConfig({
   base: "/comercialtechnet/",
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   server: {
     host: "::",
     port: 8080,
     hmr: {
       overlay: false,
-    },
-  },
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
     },
   },
 });
