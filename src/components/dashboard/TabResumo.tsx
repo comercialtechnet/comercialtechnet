@@ -3,6 +3,19 @@ import { KPICard } from './KPICard';
 import { DollarSign, ShoppingCart, Package, Layers, Receipt, Users, UserCheck, Wifi } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
+const themedTooltip = {
+  contentStyle: {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    fontSize: '12px',
+    color: 'hsl(var(--foreground))',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+  labelStyle: { color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: '4px' },
+  itemStyle: { color: 'hsl(var(--foreground))', fontSize: '11px' },
+};
+
 const CATEGORY_COLORS: Record<string, string> = {
   'Internet': 'hsl(217, 91%, 60%)',
   'TV': 'hsl(271, 91%, 65%)',
@@ -105,7 +118,7 @@ export function TabResumo() {
             <BarChart data={catData} layout="vertical" margin={{ left: 60, right: 10 }}>
               <XAxis type="number" tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={60} />
-              <Tooltip formatter={(v: number) => fmt(v)} />
+              <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number) => [fmt(v)]} />
               {hasComparison && compStats && (
                 <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3}>
                   {catData.map((entry) => (
@@ -137,7 +150,7 @@ export function TabResumo() {
                       <Cell key={i} fill={Object.values(CATEGORY_COLORS)[i % Object.values(CATEGORY_COLORS).length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -151,7 +164,7 @@ export function TabResumo() {
                         <Cell key={i} fill={Object.values(CATEGORY_COLORS)[i % Object.values(CATEGORY_COLORS).length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

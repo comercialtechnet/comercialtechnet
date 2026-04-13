@@ -1,6 +1,19 @@
 import { useFilteredData } from '@/lib/use-filtered-data';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
+const themedTooltip = {
+  contentStyle: {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    fontSize: '12px',
+    color: 'hsl(var(--foreground))',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+  labelStyle: { color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: '4px' },
+  itemStyle: { color: 'hsl(var(--foreground))', fontSize: '11px' },
+};
+
 const CATEGORY_COLORS: Record<string, string> = {
   'Internet': 'hsl(217, 91%, 60%)',
   'TV': 'hsl(271, 91%, 65%)',
@@ -62,7 +75,7 @@ export function TabProdutos() {
             <BarChart data={catData}>
               <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-30} textAnchor="end" height={60} interval={0} />
               <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip />
+              <Tooltip {...themedTooltip} labelFormatter={(label) => label} />
               <Bar dataKey="quantidade" radius={[4, 4, 0, 0]}>
                 {catData.map(entry => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
