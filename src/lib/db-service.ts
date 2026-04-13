@@ -120,6 +120,7 @@ export async function saveImportToDatabase(
       possui_mudanca_tecnologia: v.possui_mudanca_tecnologia,
       possui_adicionais: v.possui_adicionais,
       chave_deduplicacao: v.chave_deduplicacao,
+      empresa_venda: v.empresa_venda || null,
     }));
 
     const { data: insertedVendas, error: vendaErr } = await supabaseExternal
@@ -218,6 +219,7 @@ export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens
     possui_adicionais: v.possui_adicionais || false,
     chave_deduplicacao: v.chave_deduplicacao || '',
     criado_em: v.criado_em || '',
+    empresa_venda: v.empresa_venda || '',
   }));
 
   // Map itens using id_venda for compatibility
