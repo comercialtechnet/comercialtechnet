@@ -16,6 +16,8 @@ import { TabAdmin } from '@/components/dashboard/TabAdmin';
 import { ImportDialog } from '@/components/dashboard/ImportDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/hooks/use-theme';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 const tabs: { id: DashboardTab; label: string }[] = [
   { id: 'resumo', label: 'Resumo' },
@@ -38,22 +40,6 @@ const tabComponents: Record<DashboardTab, React.FC> = {
   analise: TabAnalise,
   admin: TabAdmin,
 };
-
-function useTheme() {
-  const [dark, setDark] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const saved = localStorage.getItem('technet-theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('technet-theme', dark ? 'dark' : 'light');
-  }, [dark]);
-
-  return { dark, toggle: () => setDark(d => !d) };
-}
 
 export default function Dashboard() {
   const { activeTab, setActiveTab } = useFilters();
