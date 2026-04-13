@@ -258,10 +258,10 @@ export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoa
 
 export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
   const rows = Object.entries(goals).map(([key, goal]) => {
-    // key is YYYY-MM, competencia is first day of month
-    const competencia = `${key}-01`;
+    const [ano, mes] = key.split('-').map(Number);
     return {
-      competencia,
+      periodo_ano: ano,
+      periodo_mes: mes,
       meta_faturamento: goal.meta_faturamento,
       meta_total_vendas: goal.meta_total_vendas,
       meta_vendas_virtua: goal.meta_vendas_virtua,
@@ -272,15 +272,16 @@ export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
 
   const { error } = await supabaseExternal
     .from('metas_mensais')
-    .upsert(rows, { onConflict: 'competencia' });
+    .upsert(rows, { onConflict: 'periodo_ano,periodo_mes' });
 
   if (error) throw new Error(`Erro ao salvar metas: ${error.message}`);
 }
 
 export async function deleteMetaFromDatabase(key: string) {
-  const competencia = `${key}-01`;
+  const [ano, mes] = key.split('-').map(Number);
   await supabaseExternal
     .from('metas_mensais')
     .delete()
-    .eq('competencia', competencia);
+    .eq('periodo_ano', ano)
+    .eq('periodo_mes', mes);
 }
