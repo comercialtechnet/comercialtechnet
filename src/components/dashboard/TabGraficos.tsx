@@ -7,6 +7,32 @@ const COLORS = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl
 const COLORS_FADED = ['hsl(217,91%,80%)', 'hsl(271,91%,82%)', 'hsl(347,77%,75%)', 'hsl(38,92%,75%)', 'hsl(160,84%,65%)', 'hsl(199,89%,72%)', 'hsl(215,16%,72%)'];
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const tooltipStyle = {
+  contentStyle: {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    fontSize: '12px',
+    color: 'hsl(var(--foreground))',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+  labelStyle: {
+    color: 'hsl(var(--foreground))',
+    fontWeight: 600,
+    marginBottom: '4px',
+  },
+  itemStyle: {
+    color: 'hsl(var(--foreground))',
+    fontSize: '11px',
+  },
+};
+
+const pieTooltipStyle = {
+  contentStyle: tooltipStyle.contentStyle,
+  labelStyle: tooltipStyle.labelStyle,
+  itemStyle: tooltipStyle.itemStyle,
+};
+
 export function TabGraficos() {
   const { filteredVendas, stats, compFilteredVendas, compStats, hasComparison } = useFilteredData();
   const { filters } = useFilters();
@@ -94,6 +120,7 @@ export function TabGraficos() {
     }));
 
   const renderDualPie = (
+    title: string,
     currentData: { name: string; value: number }[],
     compData: { name: string; value: number }[],
     colorOffset: number
@@ -106,7 +133,11 @@ export function TabGraficos() {
             <Pie data={currentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={hasComparison ? 55 : 75} label={!hasComparison ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : undefined} fontSize={10}>
               {currentData.map((_, i) => <Cell key={i} fill={COLORS[(i + colorOffset) % COLORS.length]} />)}
             </Pie>
-            <Tooltip />
+            <Tooltip
+              contentStyle={pieTooltipStyle.contentStyle}
+              itemStyle={pieTooltipStyle.itemStyle}
+              formatter={(value: number, name: string) => [`${value} vendas`, name]}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -118,7 +149,11 @@ export function TabGraficos() {
               <Pie data={compData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} fontSize={10} opacity={0.5}>
                 {compData.map((_, i) => <Cell key={i} fill={COLORS_FADED[(i + colorOffset) % COLORS_FADED.length]} />)}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={pieTooltipStyle.contentStyle}
+                itemStyle={pieTooltipStyle.itemStyle}
+                formatter={(value: number, name: string) => [`${value} vendas`, name]}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -141,7 +176,11 @@ export function TabGraficos() {
             <LineChart data={dailyData}>
               <XAxis dataKey="date" tick={{ fontSize: 9 }} />
               <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 9 }} width={35} />
-              <Tooltip formatter={(v: number, name: string) => [fmt(v), name === 'compFaturamento' ? compLabel : currentLabel]} />
+              <Tooltip
+                {...tooltipStyle}
+                labelFormatter={(label) => `Dia ${label}`}
+                formatter={(v: number, name: string) => [fmt(v), name === 'compFaturamento' ? compLabel : currentLabel]}
+              />
               <Line type="monotone" dataKey="faturamento" name={currentLabel} stroke="hsl(347,77%,50%)" strokeWidth={2} dot={false} />
               {hasComparison && (
                 <Line type="monotone" dataKey="compFaturamento" name={compLabel} stroke="hsl(347,77%,75%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
@@ -158,7 +197,10 @@ export function TabGraficos() {
             <LineChart data={dailyData}>
               <XAxis dataKey="date" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 9 }} width={25} />
-              <Tooltip />
+              <Tooltip
+                {...tooltipStyle}
+                labelFormatter={(label) => `Dia ${label}`}
+              />
               <Line type="monotone" dataKey="vendas" name={`Vendas (${currentLabel})`} stroke="hsl(217,91%,60%)" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="combos" name={`Combos (${currentLabel})`} stroke="hsl(160,84%,39%)" strokeWidth={2} dot={false} />
               {hasComparison && (
@@ -175,19 +217,19 @@ export function TabGraficos() {
         {/* Tipo de Venda */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Tipo de Venda</h3>
-          {renderDualPie(tipoVendaData, compTipoVendaData, 0)}
+          {renderDualPie('Tipo de Venda', tipoVendaData, compTipoVendaData, 0)}
         </div>
 
         {/* Tipo de Cliente */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Tipo de Cliente</h3>
-          {renderDualPie(tipoClienteData, compTipoClienteData, 2)}
+          {renderDualPie('Tipo de Cliente', tipoClienteData, compTipoClienteData, 2)}
         </div>
 
         {/* Forma Pagamento */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Forma de Pagamento</h3>
-          {renderDualPie(formaPagData, compFormaPagData, 4)}
+          {renderDualPie('Forma de Pagamento', formaPagData, compFormaPagData, 4)}
         </div>
 
         {/* Top Vendedores */}
@@ -197,7 +239,11 @@ export function TabGraficos() {
             <BarChart data={topVend} layout="vertical" margin={{ left: 60, right: 10 }}>
               <XAxis type="number" tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 9 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={60} />
-              <Tooltip formatter={(v: number) => fmt(v)} />
+              <Tooltip
+                {...tooltipStyle}
+                labelFormatter={(label) => label}
+                formatter={(v: number) => [fmt(v)]}
+              />
               {hasComparison && compStats && (
                 <Bar dataKey="compFaturamento" name={compLabel} fill="hsl(347,77%,75%)" radius={[0, 4, 4, 0]} opacity={0.4} />
               )}
