@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# TechNET - Sistema de Gestão Comercial
 
-TODO: Document your project here
+Sistema ERP comercial desenvolvido com React, TypeScript, Vite e Supabase.

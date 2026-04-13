@@ -14,6 +14,7 @@ import { TabSupervisao } from '@/components/dashboard/TabSupervisao';
 import { TabAnalise } from '@/components/dashboard/TabAnalise';
 import { TabAdmin } from '@/components/dashboard/TabAdmin';
 import { ImportDialog } from '@/components/dashboard/ImportDialog';
+import { MetaReminderDialog } from '@/components/dashboard/MetaReminderDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/hooks/use-theme';
@@ -48,6 +49,10 @@ export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const { dark, toggle: toggleTheme } = useTheme();
+
+  const handleMetaFillNow = () => {
+    setActiveTab('admin');
+  };
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -184,6 +189,9 @@ export default function Dashboard() {
 
       {/* Import Dialog */}
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
+      {/* Meta Reminder for Admins */}
+      <MetaReminderDialog onFillNow={handleMetaFillNow} />
 
       {/* Content */}
       <main className="p-3 sm:p-4 md:p-6">
