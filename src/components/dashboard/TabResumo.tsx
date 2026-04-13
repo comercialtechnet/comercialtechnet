@@ -1,7 +1,7 @@
 import { useFilteredData, calcVariation } from '@/lib/use-filtered-data';
 import { KPICard } from './KPICard';
 import { DollarSign, ShoppingCart, Package, Layers, Receipt, Users, UserCheck, Wifi } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
 
 const themedTooltip = {
   contentStyle: {
@@ -130,6 +130,7 @@ export function TabResumo() {
                 {catData.map((entry) => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}
+                <LabelList dataKey="faturamento" position="right" formatter={(v: number) => `R$ ${(v/1000).toFixed(0)}k`} style={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} />
               </Bar>
               {hasComparison && compStats && <Legend wrapperStyle={{ fontSize: 10 }} />}
             </BarChart>
@@ -145,7 +146,7 @@ export function TabResumo() {
               )}
               <ResponsiveContainer width="100%" height={hasComparison ? 200 : 250}>
                 <PieChart>
-                  <Pie data={comboData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={hasComparison ? 60 : 80} label={!hasComparison ? ({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)` : undefined} labelLine={false} fontSize={9}>
+                  <Pie data={comboData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={hasComparison ? 60 : 80} label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`} labelLine={true} fontSize={8}>
                     {comboData.map((_, i) => (
                       <Cell key={i} fill={Object.values(CATEGORY_COLORS)[i % Object.values(CATEGORY_COLORS).length]} />
                     ))}

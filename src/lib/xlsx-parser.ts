@@ -232,6 +232,7 @@ function parseAnaliticoSheet(rows: Record<string, unknown>[], erros: string[]): 
         possui_adicionais: categorias.includes('Adicionais'),
         chave_deduplicacao: chave,
         criado_em: new Date().toISOString(),
+        empresa_venda: '',
       });
 
       itens.push(...vendaItens);
@@ -243,11 +244,25 @@ function parseAnaliticoSheet(rows: Record<string, unknown>[], erros: string[]): 
   return { vendas, itens };
 }
 
+function extractEmpresaVenda(fileName: string): string {
+  const name = fileName.toUpperCase().replace(/\.XLSX?$/i, '').trim();
+  if (name.includes('VNA')) return 'VNA';
+  if (name.includes('RDT')) return 'RDT';
+  return '';
+}
+
 export function parseXLSX(file: File): Promise<ParseResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
+        // Validate empresa from filename
+        const empresaVenda = extractEmpresaVenda(file.name);
+        if (!empresaVenda) {
+          reject(new Error('Nome do arquivo inválido. O arquivo deve conter "VNA" ou "RDT" no nome (ex: VNA_vendas.xlsx, RDT_vendas.xlsx).'));
+          return;
+        }
+
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array', cellDates: true });
 
@@ -257,7 +272,6 @@ export function parseXLSX(file: File): Promise<ParseResult> {
         let itens: ItemVenda[] = [];
         let totalLinhas = 0;
 
-        // Skip "Planilha1" (or similar empty sheets)
         const skipSheets = new Set(['planilha1']);
 
         for (const sheetName of wb.SheetNames) {
@@ -270,22 +284,20 @@ export function parseXLSX(file: File): Promise<ParseResult> {
 
           if (rows.length === 0) continue;
 
-          // Detect sheet type by headers
           const headers = Object.keys(rows[0]).map(h => normalizeHeader(h));
 
-          // "Analítico" sheet — has IdVenda, Proposta, Produtos, etc.
           const isAnalitico = headers.some(h => h.includes('idvenda') || h.includes('proposta')) &&
                               headers.some(h => h.includes('produto') || h.includes('vendedor'));
 
           if (isAnalitico) {
-            // Re-read with raw values for proper number handling
             const rawRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
             const result = parseAnaliticoSheet(rawRows, erros);
+            // Add empresa_venda to all vendas
+            result.vendas.forEach(v => { v.empresa_venda = empresaVenda; });
             vendas = [...vendas, ...result.vendas];
             itens = [...itens, ...result.itens];
             totalLinhas += rawRows.length;
           } else {
-            // Other sheets (Agregado, Produtos) — store info but main data comes from Analítico
             totalLinhas += rows.length;
           }
         }

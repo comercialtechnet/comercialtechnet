@@ -35,6 +35,7 @@ export interface Venda {
   possui_adicionais: boolean;
   chave_deduplicacao: string;
   criado_em: string;
+  empresa_venda: string;
 }
 
 export interface ItemVenda {

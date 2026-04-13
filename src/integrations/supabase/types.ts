@@ -194,6 +194,7 @@ export type Database = {
           criado_em: string
           data_instalacao: string | null
           e_combo: boolean
+          empresa_venda: string | null
           forma_pagamento: string | null
           id: string
           id_cliente: string | null
@@ -229,6 +230,7 @@ export type Database = {
           criado_em?: string
           data_instalacao?: string | null
           e_combo?: boolean
+          empresa_venda?: string | null
           forma_pagamento?: string | null
           id?: string
           id_cliente?: string | null
@@ -264,6 +266,7 @@ export type Database = {
           criado_em?: string
           data_instalacao?: string | null
           e_combo?: boolean
+          empresa_venda?: string | null
           forma_pagamento?: string | null
           id?: string
           id_cliente?: string | null

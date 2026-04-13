@@ -130,6 +130,7 @@ function generateVendas(): { vendas: Venda[]; itens: ItemVenda[] } {
       possui_adicionais: categorias.includes('Adicionais'),
       chave_deduplicacao: `${vendaId}-${proposta}-${contrato}-${idCliente}`,
       criado_em: new Date().toISOString(),
+      empresa_venda: ['VNA', 'RDT'][Math.floor(Math.random() * 2)],
     });
 
     itens.push(...vendaItens);
