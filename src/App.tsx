@@ -12,7 +12,14 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import { LoadingScreen } from "./components/LoadingScreen";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const [isReady, setIsReady] = useState(false);
