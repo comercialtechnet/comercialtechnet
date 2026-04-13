@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { DashboardFilters, DashboardTab, Venda, ItemVenda, MonthlyGoal } from './types';
 import { getDefaultComparisonDates, INITIAL_MONTHLY_GOALS } from './monthly-goals';
 import { loadVendasFromDatabase, loadMetasFromDatabase } from './db-service';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 
 const defaultFilters: DashboardFilters = {
   dataInicio: '',
