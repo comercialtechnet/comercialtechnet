@@ -8,7 +8,7 @@ import { useFilters } from '@/lib/filters-context';
 import { formatMonthKey, generateMonthKey } from '@/lib/monthly-goals';
 import { saveMetasToDatabase, deleteMetaFromDatabase } from '@/lib/db-service';
 import { MonthlyGoal } from '@/lib/types';
-import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProfileUser {
   id: string;
