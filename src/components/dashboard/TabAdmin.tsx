@@ -17,7 +17,6 @@ interface ProfileUser {
   perfil: string;
   status_aprovacao: string;
   ativo: boolean;
-  criado_em: string;
   email?: string;
 }
 
@@ -46,8 +45,7 @@ export function TabAdmin() {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*')
-        .order('criado_em', { ascending: false });
+        .select('*');
 
       if (error) {
         console.error('Erro ao carregar perfis:', error);
@@ -55,14 +53,13 @@ export function TabAdmin() {
         return;
       }
 
-      const mapped: ProfileUser[] = (profiles || []).map(p => ({
+      const mapped: ProfileUser[] = (profiles || []).map((p: any) => ({
         id: p.id,
         nome_vinculado: p.nome_vinculado,
         nome_normalizado: p.nome_normalizado,
         perfil: p.perfil,
         status_aprovacao: p.status_aprovacao,
         ativo: p.ativo,
-        criado_em: p.criado_em,
       }));
 
       setUsers(mapped);
@@ -401,9 +398,9 @@ export function TabAdmin() {
               <div className="space-y-2 sm:space-y-3">
                 {pending.map(u => (
                   <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface rounded-lg p-3">
-                    <div>
+                     <div>
                       <p className="text-sm font-medium text-foreground">{u.nome_vinculado}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">{u.perfil} · {new Date(u.criado_em).toLocaleDateString('pt-BR')}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">{u.perfil}</p>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1 sm:flex-none" onClick={() => approveUser(u.id)}>
