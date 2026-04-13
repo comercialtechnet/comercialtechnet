@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Zap } from 'lucide-react';
+import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { dark, toggle: toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +31,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface p-4">
+    <div className="min-h-screen flex items-center justify-center bg-surface p-4 relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 h-9 w-9 text-muted-foreground hover:text-foreground"
+      >
+        {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </Button>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

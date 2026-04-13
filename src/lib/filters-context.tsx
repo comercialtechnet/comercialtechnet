@@ -75,6 +75,23 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
             totalLinhas: dbData.vendas.length,
             erros: [],
           });
+
+          // Auto-set filters to current month with latest data date
+          const now = new Date();
+          const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+          
+          // Find latest date in the data
+          const dates = dbData.vendas
+            .map(v => v.data_instalacao)
+            .filter(Boolean)
+            .sort();
+          const latestDate = dates.length > 0 ? dates[dates.length - 1] : now.toISOString().slice(0, 10);
+          
+          setFilters(prev => ({
+            ...prev,
+            dataInicio: firstDay,
+            dataFim: latestDate,
+          }));
         }
 
         if (Object.keys(dbMetas).length > 0) {
