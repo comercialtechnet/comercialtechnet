@@ -1,4 +1,4 @@
-import { Venda, ItemVenda, Meta } from './types';
+import { Venda, ItemVenda } from './types';
 
 const vendedores = [
   { nome: 'Ana Silva', supervisor: 'Carlos Mendes' },
@@ -129,7 +129,7 @@ function generateVendas(): { vendas: Venda[]; itens: ItemVenda[] } {
       possui_mudanca_tecnologia: false,
       possui_adicionais: categorias.includes('Adicionais'),
       chave_deduplicacao: `${vendaId}-${proposta}-${contrato}-${idCliente}`,
-      criado_em: new Date().toISOString(),
+      data_ultima_importacao: new Date().toISOString(),
       empresa_venda: ['VNA', 'RDT'][Math.floor(Math.random() * 2)],
     });
 
