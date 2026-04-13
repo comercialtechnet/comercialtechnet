@@ -237,12 +237,16 @@ export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoa
   if (error || !data) return {};
 
   const goals: Record<string, MonthlyGoal> = {};
-  data.forEach(row => {
-    // competencia is a date like '2026-04-01'
-    const comp = row.competencia as string;
-    if (!comp) return;
-    // Use YYYY-MM as key
-    const key = comp.slice(0, 7);
+  data.forEach((row: any) => {
+    // Support both schemas: competencia (new) or periodo_ano/periodo_mes (current)
+    let key: string;
+    if (row.competencia) {
+      key = (row.competencia as string).slice(0, 7);
+    } else if (row.periodo_ano && row.periodo_mes) {
+      key = `${row.periodo_ano}-${String(row.periodo_mes).padStart(2, '0')}`;
+    } else {
+      return;
+    }
     goals[key] = {
       meta_faturamento: Number(row.meta_faturamento) || 0,
       meta_total_vendas: Number(row.meta_total_vendas) || 0,
