@@ -50,6 +50,35 @@ async function fetchAll<T>(
   return allData;
 }
 
+async function loadExistingDedupKeys(keys: string[]): Promise<Set<string>> {
+  const existing = new Set<string>();
+
+  if (keys.length === 0) return existing;
+
+  const CHUNK_SIZE = 500;
+
+  for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
+    const chunk = keys.slice(i, i + CHUNK_SIZE);
+
+    const { data, error } = await supabase
+      .from('vendas')
+      .select('chave_deduplicacao')
+      .in('chave_deduplicacao', chunk);
+
+    if (error) {
+      throw new Error(`Erro ao verificar duplicidades: ${error.message}`);
+    }
+
+    (data || []).forEach((row) => {
+      if (row.chave_deduplicacao) {
+        existing.add(row.chave_deduplicacao);
+      }
+    });
+  }
+
+  return existing;
+}
+
 // ─── Importação: inserts diretos ───
 
 export async function saveImportToDatabase(
@@ -62,6 +91,31 @@ export async function saveImportToDatabase(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Usuário não autenticado');
 
+  const uniqueKeys = [...new Set(vendas.map(v => v.chave_deduplicacao).filter(Boolean))];
+  const existingKeys = await loadExistingDedupKeys(uniqueKeys);
+  const novasVendas = vendas.filter(v => !v.chave_deduplicacao || !existingKeys.has(v.chave_deduplicacao));
+  let duplicateCount = vendas.length - novasVendas.length;
+
+  if (novasVendas.length === 0) {
+    console.log('[Import] Arquivo sem vendas novas; todas as chaves já existem no banco.');
+    return {
+      importacaoId: null,
+      totalInseridas: 0,
+      totalDuplicadas: duplicateCount,
+      totalErros,
+    };
+  }
+
+  const itensPorVenda = new Map<string, ItemVenda[]>();
+  itens.forEach((item) => {
+    const current = itensPorVenda.get(item.venda_id);
+    if (current) {
+      current.push(item);
+      return;
+    }
+    itensPorVenda.set(item.venda_id, [item]);
+  });
+
   console.log('[Import] Criando registro de importação...');
 
   // 1. Create importacao record
@@ -71,6 +125,9 @@ export async function saveImportToDatabase(
       nome_arquivo: nomeArquivo,
       importado_por: user.id,
       total_linhas: totalLinhas,
+      total_inseridas: novasVendas.length,
+      total_substituidas: duplicateCount,
+      total_erros: totalErros,
     })
     .select('id')
     .single();
@@ -88,8 +145,8 @@ export async function saveImportToDatabase(
   const errors: string[] = [];
   const BATCH_SIZE = 50;
 
-  for (let i = 0; i < vendas.length; i += BATCH_SIZE) {
-    const batch = vendas.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < novasVendas.length; i += BATCH_SIZE) {
+    const batch = novasVendas.slice(i, i + BATCH_SIZE);
     
     const vendasToInsert = batch.map(v => ({
       importacao_id: importacaoId,
@@ -128,7 +185,10 @@ export async function saveImportToDatabase(
 
     const { data: insertedVendas, error: vendaErr } = await supabase
       .from('vendas')
-      .insert(vendasToInsert)
+      .upsert(vendasToInsert, {
+        onConflict: 'chave_deduplicacao',
+        ignoreDuplicates: true,
+      })
       .select('id, id_venda');
 
     if (vendaErr) {
@@ -149,7 +209,7 @@ export async function saveImportToDatabase(
       const vendaUuid = vendaIdMap.get(v.id_venda);
       if (!vendaUuid) continue;
 
-      const vendaItens = itens.filter(it => it.venda_id === v.id_venda);
+      const vendaItens = itensPorVenda.get(v.id_venda) || [];
       for (const it of vendaItens) {
         batchItens.push({
           venda_id: vendaUuid,
@@ -176,28 +236,22 @@ export async function saveImportToDatabase(
       }
     }
 
-    processedCount += batch.length;
-    console.log(`[Import] Processado ${processedCount}/${vendas.length} vendas`);
+    processedCount += insertedVendas?.length || 0;
+    duplicateCount += batch.length - (insertedVendas?.length || 0);
+    console.log(`[Import] Processado ${processedCount}/${novasVendas.length} vendas novas`);
   }
 
   if (errors.length > 0) {
     console.warn('[Import] Erros:', errors);
   }
 
-  const { error: updateImportErr } = await supabase
-    .from('importacoes')
-    .update({
-      total_inseridas: processedCount,
-      total_erros: totalErros + errors.length,
-    })
-    .eq('id', importacaoId);
-
-  if (updateImportErr) {
-    console.error('[Import] Erro ao atualizar totais da importação:', updateImportErr);
-  }
-
   console.log(`[Import] Concluído: ${processedCount} vendas processadas`);
-  return { importacaoId, totalInseridas: processedCount };
+  return {
+    importacaoId,
+    totalInseridas: processedCount,
+    totalDuplicadas: duplicateCount,
+    totalErros: totalErros + errors.length,
+  };
 }
 
 // ─── Carregar dados do banco ───
