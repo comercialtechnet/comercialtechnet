@@ -63,7 +63,7 @@ const App: React.FC = () => (
       <FiltersProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename="/comercialtechnet/">
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
