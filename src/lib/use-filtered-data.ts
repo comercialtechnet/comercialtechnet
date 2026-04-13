@@ -33,7 +33,8 @@ function filterVendas(
     if (filters.vendedor && v.vendedor_normalizado !== filters.vendedor.toUpperCase()) return false;
     if (filters.supervisor && v.supervisor_normalizado !== filters.supervisor.toUpperCase()) return false;
     if (filters.categoriaPrincipal) {
-      const vendaItens = itens.filter(it => it.venda_id === v.id_venda);
+      // Use venda UUID (id) for matching itens
+      const vendaItens = itens.filter(it => it.venda_id === v.id);
       if (!vendaItens.some(it => it.categoria_principal === filters.categoriaPrincipal)) return false;
     }
     if (filters.tipoVenda && v.tipo_venda !== filters.tipoVenda) return false;
@@ -54,7 +55,8 @@ function filterVendas(
 }
 
 function computeStats(vendas: Venda[], itens: ItemVenda[]): DashboardStats {
-  const vendaIds = new Set(vendas.map(v => v.id_venda));
+  // Use venda UUID (id) for matching itens
+  const vendaIds = new Set(vendas.map(v => v.id));
   const filteredItens = itens.filter(it => vendaIds.has(it.venda_id));
 
   const faturamento = vendas.reduce((sum, v) => sum + v.valor_total, 0);
@@ -124,7 +126,8 @@ export function useFilteredData() {
   }, [filters, sourceVendas, sourceItens]);
 
   const filteredItens = useMemo(() => {
-    const vendaIds = new Set(filteredVendas.map(v => v.id_venda));
+    // Use venda UUID (id) for matching
+    const vendaIds = new Set(filteredVendas.map(v => v.id));
     return sourceItens.filter(it => vendaIds.has(it.venda_id));
   }, [filteredVendas, sourceItens]);
 

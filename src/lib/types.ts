@@ -4,6 +4,7 @@ export type ApprovalStatus = 'pendente' | 'aprovado' | 'rejeitado';
 export interface Venda {
   id: string;
   importacao_id: string;
+  empresa_venda: string;
   id_venda: string;
   proposta: string;
   contrato: string;
@@ -34,8 +35,7 @@ export interface Venda {
   possui_mudanca_tecnologia: boolean;
   possui_adicionais: boolean;
   chave_deduplicacao: string;
-  criado_em: string;
-  empresa_venda: string;
+  data_ultima_importacao: string;
 }
 
 export interface ItemVenda {
@@ -60,20 +60,7 @@ export interface Importacao {
   total_inseridas: number;
   total_substituidas: number;
   total_erros: number;
-}
-
-export interface Meta {
-  id: string;
-  periodo_mes: number;
-  periodo_ano: number;
-  tipo_meta: string;
-  escopo: string;
-  nome_escopo: string;
-  categoria: string;
-  meta_faturamento: number;
-  meta_vendas: number;
-  meta_produtos: number;
-  meta_combos: number;
+  empresa_venda: string;
 }
 
 export interface MonthlyGoal {

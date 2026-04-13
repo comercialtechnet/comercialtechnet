@@ -1,4 +1,4 @@
-import { Venda, ItemVenda, Meta } from './types';
+import { Venda, ItemVenda } from './types';
 
 const vendedores = [
   { nome: 'Ana Silva', supervisor: 'Carlos Mendes' },
@@ -129,7 +129,7 @@ function generateVendas(): { vendas: Venda[]; itens: ItemVenda[] } {
       possui_mudanca_tecnologia: false,
       possui_adicionais: categorias.includes('Adicionais'),
       chave_deduplicacao: `${vendaId}-${proposta}-${contrato}-${idCliente}`,
-      criado_em: new Date().toISOString(),
+      data_ultima_importacao: new Date().toISOString(),
       empresa_venda: ['VNA', 'RDT'][Math.floor(Math.random() * 2)],
     });
 
@@ -141,10 +141,4 @@ function generateVendas(): { vendas: Venda[]; itens: ItemVenda[] } {
 
 export const { vendas: mockVendas, itens: mockItens } = generateVendas();
 
-export const mockMetas: Meta[] = [
-  { id: 'm1', periodo_mes: 3, periodo_ano: 2025, tipo_meta: 'vendedor', escopo: 'vendedor', nome_escopo: 'Ana Silva', categoria: 'geral', meta_faturamento: 15000, meta_vendas: 30, meta_produtos: 50, meta_combos: 15 },
-  { id: 'm2', periodo_mes: 3, periodo_ano: 2025, tipo_meta: 'vendedor', escopo: 'vendedor', nome_escopo: 'Bruno Costa', categoria: 'geral', meta_faturamento: 12000, meta_vendas: 25, meta_produtos: 40, meta_combos: 12 },
-  { id: 'm3', periodo_mes: 3, periodo_ano: 2025, tipo_meta: 'supervisor', escopo: 'supervisor', nome_escopo: 'Carlos Mendes', categoria: 'geral', meta_faturamento: 40000, meta_vendas: 80, meta_produtos: 130, meta_combos: 40 },
-  { id: 'm4', periodo_mes: 3, periodo_ano: 2025, tipo_meta: 'supervisor', escopo: 'supervisor', nome_escopo: 'Fernanda Lima', categoria: 'geral', meta_faturamento: 35000, meta_vendas: 70, meta_produtos: 120, meta_combos: 35 },
-  { id: 'm5', periodo_mes: 3, periodo_ano: 2025, tipo_meta: 'supervisor', escopo: 'supervisor', nome_escopo: 'Roberto Nunes', categoria: 'geral', meta_faturamento: 45000, meta_vendas: 90, meta_produtos: 150, meta_combos: 45 },
-];
+// Mock metas removed - metas come from database only

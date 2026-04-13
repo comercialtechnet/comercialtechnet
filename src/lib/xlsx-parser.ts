@@ -231,7 +231,7 @@ function parseAnaliticoSheet(rows: Record<string, unknown>[], erros: string[]): 
         possui_mudanca_tecnologia: categorias.includes('Mudança de Tecnologia'),
         possui_adicionais: categorias.includes('Adicionais'),
         chave_deduplicacao: chave,
-        criado_em: new Date().toISOString(),
+        data_ultima_importacao: new Date().toISOString(),
         empresa_venda: '',
       });
 
