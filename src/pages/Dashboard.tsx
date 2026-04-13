@@ -42,7 +42,7 @@ const tabComponents: Record<DashboardTab, React.FC> = {
 };
 
 export default function Dashboard() {
-  const { activeTab, setActiveTab } = useFilters();
+  const { activeTab, setActiveTab, isLoadingFromDB } = useFilters();
   const navigate = useNavigate();
   const ActiveComponent = tabComponents[activeTab];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,6 +53,10 @@ export default function Dashboard() {
     setActiveTab(id);
     setMobileMenuOpen(false);
   };
+
+  if (isLoadingFromDB) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-surface">
