@@ -184,6 +184,18 @@ export async function saveImportToDatabase(
     console.warn('[Import] Erros:', errors);
   }
 
+  const { error: updateImportErr } = await supabase
+    .from('importacoes')
+    .update({
+      total_inseridas: processedCount,
+      total_erros: totalErros + errors.length,
+    })
+    .eq('id', importacaoId);
+
+  if (updateImportErr) {
+    console.error('[Import] Erro ao atualizar totais da importação:', updateImportErr);
+  }
+
   console.log(`[Import] Concluído: ${processedCount} vendas processadas`);
   return { importacaoId, totalInseridas: processedCount };
 }
