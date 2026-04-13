@@ -114,20 +114,6 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void reloadFromDatabase();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        setImportedData(null);
-        setIsLoadingFromDB(false);
-        return;
-      }
-
-      window.setTimeout(() => {
-        void reloadFromDatabase();
-      }, 0);
-    });
-
-    return () => subscription.unsubscribe();
   }, [reloadFromDatabase]);
 
   // Persist goals to localStorage as fallback
