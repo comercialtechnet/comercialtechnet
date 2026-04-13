@@ -1,7 +1,6 @@
 import { supabaseExternal } from '@/integrations/supabase/external-client';
 import { Venda, ItemVenda, MonthlyGoal } from './types';
 
-// All operations (auth + data) use the external Supabase project
 const supabase = supabaseExternal;
 
 // ─── Helper: fetch all rows bypassing 1000-row limit ───
@@ -53,7 +52,7 @@ async function fetchAll<T>(
   return allData;
 }
 
-// ─── Importação: salvar vendas e itens no banco ───
+// ─── Importação: usar RPC processar_venda_com_itens ───
 
 export async function saveImportToDatabase(
   vendas: Venda[],
@@ -65,16 +64,13 @@ export async function saveImportToDatabase(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Usuário não autenticado');
 
-  // 1. Create importacao record
+  // 1. Create importacao record (empresa_venda is derived by DB from nome_arquivo)
   const { data: importacao, error: importErr } = await supabaseExternal
     .from('importacoes')
     .insert({
       nome_arquivo: nomeArquivo,
       importado_por: user.id,
       total_linhas: totalLinhas,
-      total_inseridas: vendas.length,
-      total_substituidas: 0,
-      total_erros: totalErros,
     })
     .select('id')
     .single();
@@ -83,13 +79,14 @@ export async function saveImportToDatabase(
 
   const importacaoId = importacao.id;
 
-  // 2. Insert vendas in batches
-  const BATCH_SIZE = 200;
-  const vendaIdMap = new Map<string, string>(); // old id_venda -> new UUID
+  // 2. Process each venda via RPC processar_venda_com_itens
+  let processedCount = 0;
+  const errors: string[] = [];
 
-  for (let i = 0; i < vendas.length; i += BATCH_SIZE) {
-    const batch = vendas.slice(i, i + BATCH_SIZE).map(v => ({
-      importacao_id: importacaoId,
+  for (const v of vendas) {
+    const vendaItens = itens.filter(it => it.venda_id === v.id_venda);
+
+    const pVenda = {
       id_venda: v.id_venda,
       proposta: v.proposta,
       contrato: v.contrato,
@@ -120,53 +117,44 @@ export async function saveImportToDatabase(
       possui_mudanca_tecnologia: v.possui_mudanca_tecnologia,
       possui_adicionais: v.possui_adicionais,
       chave_deduplicacao: v.chave_deduplicacao,
-      empresa_venda: v.empresa_venda || null,
+    };
+
+    const pItens = vendaItens.map(it => ({
+      ordem_item: it.ordem_item,
+      descricao_original: it.descricao_original,
+      descricao_normalizada: it.descricao_normalizada,
+      valor_item: it.valor_item,
+      categoria_principal: it.categoria_principal,
+      subcategoria: it.subcategoria,
+      grupo_combo: it.grupo_combo,
+      flags_json: it.flags_json,
     }));
 
-    const { data: insertedVendas, error: vendaErr } = await supabaseExternal
-      .from('vendas')
-      .upsert(batch, { onConflict: 'chave_deduplicacao' })
-      .select('id, id_venda');
+    const { error: rpcErr } = await supabaseExternal.rpc('processar_venda_com_itens', {
+      p_importacao_id: importacaoId,
+      p_venda: pVenda,
+      p_itens: pItens,
+    });
 
-    if (vendaErr) throw new Error(`Erro ao inserir vendas (lote ${i}): ${vendaErr.message}`);
-    insertedVendas?.forEach(iv => vendaIdMap.set(iv.id_venda, iv.id));
-  }
-
-  // 3. Insert itens in batches
-  for (let i = 0; i < itens.length; i += BATCH_SIZE) {
-    const batch = itens.slice(i, i + BATCH_SIZE).map(it => {
-      const vendaUUID = vendaIdMap.get(it.venda_id);
-      if (!vendaUUID) return null;
-      return {
-        venda_id: vendaUUID,
-        ordem_item: it.ordem_item,
-        descricao_original: it.descricao_original,
-        descricao_normalizada: it.descricao_normalizada,
-        valor_item: it.valor_item,
-        categoria_principal: it.categoria_principal,
-        subcategoria: it.subcategoria,
-        grupo_combo: it.grupo_combo,
-        flags_json: it.flags_json,
-      };
-    }).filter(Boolean);
-
-    if (batch.length > 0) {
-      const { error: itemErr } = await supabaseExternal
-        .from('itens_venda')
-        .insert(batch as any[]);
-
-      if (itemErr) throw new Error(`Erro ao inserir itens (lote ${i}): ${itemErr.message}`);
+    if (rpcErr) {
+      errors.push(`Venda ${v.id_venda}: ${rpcErr.message}`);
+    } else {
+      processedCount++;
     }
   }
 
-  return { importacaoId, totalInseridas: vendas.length };
+  if (errors.length > 0) {
+    console.warn('Erros ao processar vendas:', errors);
+  }
+
+  return { importacaoId, totalInseridas: processedCount };
 }
 
-// ─── Carregar dados do banco ───
+// ─── Carregar dados do banco usando views ───
 
 export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens: ItemVenda[] } | null> {
-  // Load ALL vendas using pagination
-  const vendasRaw = await fetchAll<any>('vendas', {
+  // Load ALL vendas from vendas_dashboard view
+  const vendasRaw = await fetchAll<any>('vendas_dashboard', {
     order: { column: 'data_instalacao', ascending: false },
   });
 
@@ -188,6 +176,7 @@ export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens
   const vendas: Venda[] = vendasRaw.map(v => ({
     id: v.id,
     importacao_id: v.importacao_id,
+    empresa_venda: v.empresa_venda || '',
     id_venda: v.id_venda,
     proposta: v.proposta || '',
     contrato: v.contrato || '',
@@ -218,16 +207,13 @@ export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens
     possui_mudanca_tecnologia: v.possui_mudanca_tecnologia || false,
     possui_adicionais: v.possui_adicionais || false,
     chave_deduplicacao: v.chave_deduplicacao || '',
-    criado_em: v.criado_em || '',
-    empresa_venda: v.empresa_venda || '',
+    data_ultima_importacao: v.data_ultima_importacao || '',
   }));
 
-  // Map itens using id_venda for compatibility
-  const vendaUUIDtoIdVenda = new Map(vendasRaw.map(v => [v.id, v.id_venda]));
-
+  // Map itens - use venda id (UUID) for linking
   const itens: ItemVenda[] = allItens.map(it => ({
     id: it.id,
-    venda_id: vendaUUIDtoIdVenda.get(it.venda_id) || it.venda_id,
+    venda_id: it.venda_id,
     ordem_item: it.ordem_item || 0,
     descricao_original: it.descricao_original || '',
     descricao_normalizada: it.descricao_normalizada || '',
@@ -241,7 +227,7 @@ export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens
   return { vendas, itens };
 }
 
-// ─── Metas mensais ───
+// ─── Metas mensais (using competencia date) ───
 
 export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoal>> {
   const { data, error } = await supabaseExternal
@@ -252,7 +238,11 @@ export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoa
 
   const goals: Record<string, MonthlyGoal> = {};
   data.forEach(row => {
-    const key = `${row.periodo_ano}-${String(row.periodo_mes).padStart(2, '0')}`;
+    // competencia is a date like '2026-04-01'
+    const comp = row.competencia as string;
+    if (!comp) return;
+    // Use YYYY-MM as key
+    const key = comp.slice(0, 7);
     goals[key] = {
       meta_faturamento: Number(row.meta_faturamento) || 0,
       meta_total_vendas: Number(row.meta_total_vendas) || 0,
@@ -263,12 +253,11 @@ export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoa
 }
 
 export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
-  // Upsert all goals
   const rows = Object.entries(goals).map(([key, goal]) => {
-    const [year, month] = key.split('-').map(Number);
+    // key is YYYY-MM, competencia is first day of month
+    const competencia = `${key}-01`;
     return {
-      periodo_mes: month,
-      periodo_ano: year,
+      competencia,
       meta_faturamento: goal.meta_faturamento,
       meta_total_vendas: goal.meta_total_vendas,
       meta_vendas_virtua: goal.meta_vendas_virtua,
@@ -279,16 +268,15 @@ export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
 
   const { error } = await supabaseExternal
     .from('metas_mensais')
-    .upsert(rows, { onConflict: 'periodo_mes,periodo_ano' });
+    .upsert(rows, { onConflict: 'competencia' });
 
   if (error) throw new Error(`Erro ao salvar metas: ${error.message}`);
 }
 
 export async function deleteMetaFromDatabase(key: string) {
-  const [year, month] = key.split('-').map(Number);
+  const competencia = `${key}-01`;
   await supabaseExternal
     .from('metas_mensais')
     .delete()
-    .eq('periodo_mes', month)
-    .eq('periodo_ano', year);
+    .eq('competencia', competencia);
 }
