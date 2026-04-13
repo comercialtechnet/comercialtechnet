@@ -58,8 +58,18 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         result.totalLinhas,
         result.erros.length
       );
+
       await reloadFromDatabase();
-      toast.success(`${response.totalInseridas} vendas salvas no banco de dados!`);
+
+      if (response.totalInseridas > 0 && response.totalDuplicadas > 0) {
+        toast.success(`${response.totalInseridas} vendas novas salvas. ${response.totalDuplicadas} já existiam no banco.`);
+      } else if (response.totalInseridas > 0) {
+        toast.success(`${response.totalInseridas} vendas salvas no banco de dados!`);
+      } else if (response.totalDuplicadas > 0) {
+        toast.info(`Nenhuma venda nova enviada. ${response.totalDuplicadas} registro(s) deste arquivo já existiam no banco.`);
+      } else {
+        toast.warning('Nenhuma venda válida foi encontrada para importar.');
+      }
     } catch (err) {
       console.error('Erro ao salvar no banco:', err);
       const message = err instanceof Error ? err.message : 'Erro ao salvar no banco';
