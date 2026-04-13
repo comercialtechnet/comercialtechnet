@@ -14,7 +14,7 @@ interface ImportDialogProps {
 }
 
 export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
-  const { setImportedData, resetFilters } = useFilters();
+  const { setImportedData, resetFilters, reloadFromDatabase } = useFilters();
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,25 +51,29 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     if (!result) return;
     setSaving(true);
     try {
-      await saveImportToDatabase(
+      const response = await saveImportToDatabase(
         result.vendas,
         result.itens,
         result.nomeArquivo,
         result.totalLinhas,
         result.erros.length
       );
-      toast.success(`${result.vendas.length} vendas salvas no banco de dados!`);
+      await reloadFromDatabase();
+      toast.success(`${response.totalInseridas} vendas salvas no banco de dados!`);
     } catch (err) {
       console.error('Erro ao salvar no banco:', err);
-      toast.error('Erro ao salvar no banco. Dados serão usados apenas na sessão.');
+      const message = err instanceof Error ? err.message : 'Erro ao salvar no banco';
+      toast.error(message === 'Usuário não autenticado'
+        ? 'Faça login antes de importar para enviar os dados ao banco.'
+        : 'Erro ao salvar no banco. Dados serão usados apenas na sessão.');
+      setImportedData({
+        vendas: result.vendas,
+        itens: result.itens,
+        nomeArquivo: result.nomeArquivo,
+        totalLinhas: result.totalLinhas,
+        erros: result.erros,
+      });
     }
-    setImportedData({
-      vendas: result.vendas,
-      itens: result.itens,
-      nomeArquivo: result.nomeArquivo,
-      totalLinhas: result.totalLinhas,
-      erros: result.erros,
-    });
     resetFilters();
     setSaving(false);
     onOpenChange(false);
