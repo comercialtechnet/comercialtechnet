@@ -1,11 +1,16 @@
 import { useFilteredData } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
 
 const COLORS = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
 const COLORS_FADED = ['hsl(217,91%,80%)', 'hsl(271,91%,82%)', 'hsl(347,77%,75%)', 'hsl(38,92%,75%)', 'hsl(160,84%,65%)', 'hsl(199,89%,72%)', 'hsl(215,16%,72%)'];
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const EMPRESA_COLORS: Record<string, string> = {
+  'VNA': 'hsl(217,91%,60%)',
+  'RDT': 'hsl(347,77%,50%)',
+};
 
 const tooltipStyle = {
   contentStyle: {
@@ -33,6 +38,8 @@ const pieTooltipStyle = {
   itemStyle: tooltipStyle.itemStyle,
 };
 
+const renderPieLabel = ({ name, value, percent }: any) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`;
+
 export function TabGraficos() {
   const { filteredVendas, stats, compFilteredVendas, compStats, hasComparison } = useFilteredData();
   const { filters } = useFilters();
@@ -43,14 +50,13 @@ export function TabGraficos() {
   // Daily data - current period
   const daily: Record<string, { date: string; faturamento: number; vendas: number; combos: number }> = {};
   filteredVendas.forEach(v => {
-    const d = v.data_instalacao.slice(5); // MM-DD for comparison
+    const d = v.data_instalacao.slice(5);
     if (!daily[d]) daily[d] = { date: d, faturamento: 0, vendas: 0, combos: 0 };
     daily[d].faturamento += v.valor_total;
     daily[d].vendas += 1;
     if (v.e_combo) daily[d].combos += 1;
   });
 
-  // Daily data - comparison period (normalized to day-of-month)
   const compDaily: Record<string, { compFaturamento: number; compVendas: number; compCombos: number }> = {};
   if (hasComparison) {
     compFilteredVendas.forEach(v => {
@@ -62,7 +68,6 @@ export function TabGraficos() {
     });
   }
 
-  // Merge for line charts - use day number for alignment
   const allDays = new Set([...Object.keys(daily), ...Object.keys(compDaily)]);
   const dailyData = Array.from(allDays)
     .sort()
@@ -76,7 +81,7 @@ export function TabGraficos() {
       compCombos: compDaily[d]?.compCombos || 0,
     }));
 
-  // Tipo de venda - current
+  // Tipo de venda
   const tipoVenda: Record<string, number> = {};
   filteredVendas.forEach(v => { tipoVenda[v.tipo_venda] = (tipoVenda[v.tipo_venda] || 0) + 1; });
   const tipoVendaData = Object.entries(tipoVenda).map(([name, value]) => ({ name, value }));
@@ -109,15 +114,15 @@ export function TabGraficos() {
   }
   const compFormaPagData = Object.entries(compFormaPag).map(([name, value]) => ({ name, value }));
 
-  // Top vendedores - current + comparison
-  const topVend = Object.entries(stats.porVendedor)
-    .sort((a, b) => b[1].faturamento - a[1].faturamento)
-    .slice(0, 10)
-    .map(([name, data]) => ({
-      name,
-      faturamento: data.faturamento,
-      compFaturamento: compStats?.porVendedor[name]?.faturamento || 0,
-    }));
+  // Vendas por empresa
+  const empresaVendas: Record<string, number> = {};
+  filteredVendas.forEach(v => {
+    const emp = v.empresa_venda || 'Não identificado';
+    empresaVendas[emp] = (empresaVendas[emp] || 0) + 1;
+  });
+  const empresaData = Object.entries(empresaVendas)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, vendas]) => ({ name, vendas }));
 
   const renderDualPie = (
     title: string,
@@ -128,9 +133,19 @@ export function TabGraficos() {
     <div className={hasComparison && compData.length > 0 ? 'grid grid-cols-2 gap-1' : ''}>
       <div>
         {hasComparison && compData.length > 0 && <p className="text-[10px] font-medium text-center text-primary mb-1">{currentLabel}</p>}
-        <ResponsiveContainer width="100%" height={hasComparison && compData.length > 0 ? 180 : 220}>
+        <ResponsiveContainer width="100%" height={hasComparison && compData.length > 0 ? 200 : 240}>
           <PieChart>
-            <Pie data={currentData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={hasComparison ? 55 : 75} label={!hasComparison ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : undefined} fontSize={10}>
+            <Pie
+              data={currentData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={hasComparison ? 50 : 65}
+              label={renderPieLabel}
+              labelLine={true}
+              fontSize={9}
+            >
               {currentData.map((_, i) => <Cell key={i} fill={COLORS[(i + colorOffset) % COLORS.length]} />)}
             </Pie>
             <Tooltip
@@ -144,9 +159,9 @@ export function TabGraficos() {
       {hasComparison && compData.length > 0 && (
         <div>
           <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">{compLabel}</p>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={compData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} fontSize={10} opacity={0.5}>
+              <Pie data={compData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={50} label={renderPieLabel} labelLine={true} fontSize={9} opacity={0.5}>
                 {compData.map((_, i) => <Cell key={i} fill={COLORS_FADED[(i + colorOffset) % COLORS_FADED.length]} />)}
               </Pie>
               <Tooltip
@@ -232,23 +247,24 @@ export function TabGraficos() {
           {renderDualPie('Forma de Pagamento', formaPagData, compFormaPagData, 4)}
         </div>
 
-        {/* Top Vendedores */}
+        {/* Vendas por Empresa */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
-          <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Top Vendedores por Faturamento</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Vendas por Empresa</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topVend} layout="vertical" margin={{ left: 60, right: 10 }}>
-              <XAxis type="number" tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 9 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={60} />
+            <BarChart data={empresaData} layout="vertical" margin={{ left: 20, right: 40 }}>
+              <XAxis type="number" tick={{ fontSize: 9 }} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={40} />
               <Tooltip
                 {...tooltipStyle}
-                labelFormatter={(label) => label}
-                formatter={(v: number) => [fmt(v)]}
+                labelFormatter={(label) => `Empresa: ${label}`}
+                formatter={(v: number) => [`${v} vendas`]}
               />
-              {hasComparison && compStats && (
-                <Bar dataKey="compFaturamento" name={compLabel} fill="hsl(347,77%,75%)" radius={[0, 4, 4, 0]} opacity={0.4} />
-              )}
-              <Bar dataKey="faturamento" name={currentLabel} fill="hsl(347,77%,50%)" radius={[0, 4, 4, 0]} />
-              {hasComparison && compStats && <Legend wrapperStyle={{ fontSize: 10 }} />}
+              <Bar dataKey="vendas" name="Vendas" radius={[0, 4, 4, 0]}>
+                {empresaData.map((entry) => (
+                  <Cell key={entry.name} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
+                ))}
+                <LabelList dataKey="vendas" position="right" style={{ fontSize: 11, fontWeight: 600, fill: 'hsl(var(--foreground))' }} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
