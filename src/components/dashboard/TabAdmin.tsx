@@ -17,7 +17,6 @@ interface ProfileUser {
   perfil: string;
   status_aprovacao: string;
   ativo: boolean;
-  criado_em: string;
   email?: string;
 }
 
