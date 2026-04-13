@@ -1,5 +1,5 @@
 import { useFilteredData } from '@/lib/use-filtered-data';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 
 const themedTooltip = {
   contentStyle: {
@@ -80,6 +80,7 @@ export function TabProdutos() {
                 {catData.map(entry => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}
+                <LabelList dataKey="quantidade" position="top" style={{ fontSize: 9, fontWeight: 600, fill: 'hsl(var(--foreground))' }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
