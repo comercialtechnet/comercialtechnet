@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Zap, Upload, LogOut, Menu, Sun, Moon } from 'lucide-react';
+import { Zap, Upload, LogOut, Menu, Sun, Moon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useFilters } from '@/lib/filters-context';
@@ -42,12 +42,19 @@ const tabComponents: Record<DashboardTab, React.FC> = {
 };
 
 export default function Dashboard() {
-  const { activeTab, setActiveTab, isLoadingFromDB } = useFilters();
+  const { activeTab, setActiveTab, isLoadingFromDB, reloadFromDatabase } = useFilters();
   const navigate = useNavigate();
   const ActiveComponent = tabComponents[activeTab];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const { dark, toggle: toggleTheme } = useTheme();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await reloadFromDatabase();
+    setIsRefreshing(false);
+  };
 
   const handleTabChange = (id: DashboardTab) => {
     setActiveTab(id);
@@ -73,6 +80,9 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
