@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 
 export function LoadingScreen() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-surface gap-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6">
       {/* WiFi signal animation */}
       <div className="relative w-24 h-24 flex items-center justify-center">
         <svg viewBox="0 0 100 100" className="w-24 h-24">
