@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 import { Venda, ItemVenda, MonthlyGoal } from './types';
 
 // ─── Helper: fetch all rows bypassing 1000-row limit ───
