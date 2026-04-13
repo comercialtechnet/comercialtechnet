@@ -18,6 +18,9 @@ async function fetchAll<T>(
 
   while (hasMore) {
     let q = (supabase.from as any)(table).select(query.select || '*');
+
+    if (query.order) {
+      q = q.order(query.order.column, { ascending: query.order.ascending });
     }
     if (query.filters) {
       for (const f of query.filters) {
