@@ -45,8 +45,7 @@ export function TabAdmin() {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*')
-        .order('criado_em', { ascending: false });
+        .select('*');
 
       if (error) {
         console.error('Erro ao carregar perfis:', error);
@@ -54,14 +53,13 @@ export function TabAdmin() {
         return;
       }
 
-      const mapped: ProfileUser[] = (profiles || []).map(p => ({
+      const mapped: ProfileUser[] = (profiles || []).map((p: any) => ({
         id: p.id,
         nome_vinculado: p.nome_vinculado,
         nome_normalizado: p.nome_normalizado,
         perfil: p.perfil,
         status_aprovacao: p.status_aprovacao,
         ativo: p.ativo,
-        criado_em: p.criado_em,
       }));
 
       setUsers(mapped);
