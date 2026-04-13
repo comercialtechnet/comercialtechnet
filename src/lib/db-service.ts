@@ -153,8 +153,8 @@ export async function saveImportToDatabase(
 // ─── Carregar dados do banco usando views ───
 
 export async function loadVendasFromDatabase(): Promise<{ vendas: Venda[]; itens: ItemVenda[] } | null> {
-  // Load ALL vendas from vendas_dashboard view
-  const vendasRaw = await fetchAll<any>('vendas_dashboard', {
+  // Load ALL vendas from vendas table
+  const vendasRaw = await fetchAll<any>('vendas', {
     order: { column: 'data_instalacao', ascending: false },
   });
 
