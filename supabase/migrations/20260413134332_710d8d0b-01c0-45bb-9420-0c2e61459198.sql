@@ -1,0 +1,1 @@
+ALTER TABLE public.vendas ADD COLUMN empresa_venda text;
