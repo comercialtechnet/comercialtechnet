@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Eye, Filter } from 'lucide-react';
 import { Venda } from '@/lib/types';
 import { mockItens } from '@/lib/mock-data';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -74,27 +74,79 @@ function VendaDetail({ venda }: { venda: Venda }) {
   );
 }
 
+interface ColFilters {
+  data: string;
+  contrato: string;
+  cliente: string;
+  vendedor: string;
+  supervisor: string;
+  tipo: string;
+}
+
+const emptyColFilters: ColFilters = { data: '', contrato: '', cliente: '', vendedor: '', supervisor: '', tipo: '' };
+
 export function TabAnalise() {
   const { filteredVendas } = useFilteredData();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null);
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState<ColFilters>(emptyColFilters);
   const isMobile = useIsMobile();
 
+  const hasColFilters = Object.values(colFilters).some(v => v.length > 0);
+
   const searched = useMemo(() => {
-    if (!search) return filteredVendas;
-    const s = search.toLowerCase();
-    return filteredVendas.filter(v =>
-      v.cliente.toLowerCase().includes(s) ||
-      v.vendedor.toLowerCase().includes(s) ||
-      v.id_venda.toLowerCase().includes(s) ||
-      v.proposta.toLowerCase().includes(s) ||
-      v.contrato.toLowerCase().includes(s)
-    );
-  }, [filteredVendas, search]);
+    let list = filteredVendas;
+
+    // Global search
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(v =>
+        v.cliente.toLowerCase().includes(s) ||
+        v.vendedor.toLowerCase().includes(s) ||
+        v.id_venda.toLowerCase().includes(s) ||
+        v.proposta.toLowerCase().includes(s) ||
+        v.contrato.toLowerCase().includes(s)
+      );
+    }
+
+    // Column filters
+    if (colFilters.data) {
+      const f = colFilters.data.toLowerCase();
+      list = list.filter(v => v.data_instalacao.toLowerCase().includes(f));
+    }
+    if (colFilters.contrato) {
+      const f = colFilters.contrato.toLowerCase();
+      list = list.filter(v => v.contrato.toLowerCase().includes(f));
+    }
+    if (colFilters.cliente) {
+      const f = colFilters.cliente.toLowerCase();
+      list = list.filter(v => v.cliente.toLowerCase().includes(f));
+    }
+    if (colFilters.vendedor) {
+      const f = colFilters.vendedor.toLowerCase();
+      list = list.filter(v => v.vendedor.toLowerCase().includes(f));
+    }
+    if (colFilters.supervisor) {
+      const f = colFilters.supervisor.toLowerCase();
+      list = list.filter(v => v.supervisor.toLowerCase().includes(f));
+    }
+    if (colFilters.tipo) {
+      const f = colFilters.tipo.toLowerCase();
+      list = list.filter(v => v.tipo_venda.toLowerCase().includes(f));
+    }
+
+    return list;
+  }, [filteredVendas, search, colFilters]);
 
   const totalPages = Math.ceil(searched.length / PAGE_SIZE);
   const paged = searched.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const updateColFilter = (key: keyof ColFilters, value: string) => {
+    setColFilters(prev => ({ ...prev, [key]: value }));
+    setPage(0);
+  };
 
   return (
     <div className="space-y-4">
@@ -103,9 +155,26 @@ export function TabAnalise() {
           <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Análise Detalhada</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">{searched.length} registros encontrados</p>
         </div>
-        <div className="relative w-full sm:w-auto">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Buscar..." className="h-8 w-full sm:w-64 text-xs pl-8" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
+        <div className="flex items-center gap-2">
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input placeholder="Buscar..." className="h-8 w-full sm:w-64 text-xs pl-8" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
+          </div>
+          <Button
+            variant={showColFilters ? "secondary" : "outline"}
+            size="sm"
+            className="h-8 gap-1 text-xs shrink-0"
+            onClick={() => setShowColFilters(!showColFilters)}
+          >
+            <Filter className="h-3 w-3" />
+            <span className="hidden sm:inline">Colunas</span>
+            {hasColFilters && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+          </Button>
+          {hasColFilters && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setColFilters(emptyColFilters)}>
+              Limpar
+            </Button>
+          )}
         </div>
       </div>
 
@@ -117,6 +186,7 @@ export function TabAnalise() {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-foreground truncate">{v.cliente}</p>
                 <p className="text-[10px] text-muted-foreground">{v.data_instalacao} · {v.vendedor}</p>
+                {v.contrato && <p className="text-[10px] text-muted-foreground">Contrato: {v.contrato}</p>}
               </div>
               <span className="text-xs font-bold text-foreground tabular-nums shrink-0 ml-2">{fmt(v.valor_total)}</span>
             </div>
@@ -136,6 +206,7 @@ export function TabAnalise() {
             <tr>
               <th>Data</th>
               <th>ID Venda</th>
+              <th>Contrato</th>
               <th>Cliente</th>
               <th>Vendedor</th>
               <th>Supervisor</th>
@@ -145,12 +216,28 @@ export function TabAnalise() {
               <th>Combo</th>
               <th></th>
             </tr>
+            {showColFilters && (
+              <tr className="bg-surface/50">
+                <th className="p-1"><Input className="h-6 text-[10px] w-full" placeholder="Data..." value={colFilters.data} onChange={e => updateColFilter('data', e.target.value)} /></th>
+                <th className="p-1"></th>
+                <th className="p-1"><Input className="h-6 text-[10px] w-full" placeholder="Contrato..." value={colFilters.contrato} onChange={e => updateColFilter('contrato', e.target.value)} /></th>
+                <th className="p-1"><Input className="h-6 text-[10px] w-full" placeholder="Cliente..." value={colFilters.cliente} onChange={e => updateColFilter('cliente', e.target.value)} /></th>
+                <th className="p-1"><Input className="h-6 text-[10px] w-full" placeholder="Vendedor..." value={colFilters.vendedor} onChange={e => updateColFilter('vendedor', e.target.value)} /></th>
+                <th className="p-1"><Input className="h-6 text-[10px] w-full" placeholder="Supervisor..." value={colFilters.supervisor} onChange={e => updateColFilter('supervisor', e.target.value)} /></th>
+                <th className="p-1"></th>
+                <th className="p-1"><Input className="h-6 text-[10px] w-full" placeholder="Tipo..." value={colFilters.tipo} onChange={e => updateColFilter('tipo', e.target.value)} /></th>
+                <th className="p-1"></th>
+                <th className="p-1"></th>
+                <th className="p-1"></th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {paged.map(v => (
               <tr key={v.id}>
                 <td className="text-xs font-mono">{v.data_instalacao}</td>
                 <td className="text-xs font-mono">{v.id_venda}</td>
+                <td className="text-xs font-mono">{v.contrato}</td>
                 <td className="text-xs max-w-32 truncate">{v.cliente}</td>
                 <td className="text-xs">{v.vendedor}</td>
                 <td className="text-xs">{v.supervisor}</td>

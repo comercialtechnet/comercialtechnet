@@ -140,7 +140,7 @@ export function TabGraficos() {
   }
   const compFormaPagData = Object.entries(compFormaPag).map(([name, value]) => ({ name, value }));
 
-  // Vendas por empresa - now with faturamento
+  // Vendas por empresa - now with faturamento + comparison
   const empresaVendas: Record<string, { vendas: number; faturamento: number }> = {};
   filteredVendas.forEach(v => {
     const emp = v.empresa_venda || 'Não identificado';
@@ -148,9 +148,27 @@ export function TabGraficos() {
     empresaVendas[emp].vendas += 1;
     empresaVendas[emp].faturamento += v.valor_total;
   });
-  const empresaData = Object.entries(empresaVendas)
-    .sort((a, b) => b[1].vendas - a[1].vendas)
-    .map(([name, data]) => ({ name, vendas: data.vendas, faturamento: data.faturamento }));
+
+  const compEmpresaVendas: Record<string, { vendas: number; faturamento: number }> = {};
+  if (hasComparison) {
+    compFilteredVendas.forEach(v => {
+      const emp = v.empresa_venda || 'Não identificado';
+      if (!compEmpresaVendas[emp]) compEmpresaVendas[emp] = { vendas: 0, faturamento: 0 };
+      compEmpresaVendas[emp].vendas += 1;
+      compEmpresaVendas[emp].faturamento += v.valor_total;
+    });
+  }
+
+  const allEmpresaKeys = [...new Set([...Object.keys(empresaVendas), ...Object.keys(compEmpresaVendas)])];
+  const empresaData = allEmpresaKeys
+    .map(name => ({
+      name,
+      vendas: empresaVendas[name]?.vendas || 0,
+      faturamento: empresaVendas[name]?.faturamento || 0,
+      compVendas: compEmpresaVendas[name]?.vendas || 0,
+      compFaturamento: compEmpresaVendas[name]?.faturamento || 0,
+    }))
+    .sort((a, b) => b.vendas - a.vendas);
 
   const renderDualPie = (
     title: string,
@@ -315,16 +333,27 @@ export function TabGraficos() {
         {/* Vendas por Empresa */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Vendas por Empresa</h3>
-          <ResponsiveContainer width="100%" height={Math.max(180, empresaData.length * 50)}>
+          <ResponsiveContainer width="100%" height={Math.max(180, empresaData.length * 60)}>
             <BarChart data={empresaData} layout="vertical" margin={{ top: 5, right: 90, left: 5, bottom: 5 }}>
               <XAxis type="number" tick={{ fontSize: 9 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={50} />
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={(label) => `Empresa: ${label}`}
-                formatter={(v: number, name: string) => [name === 'faturamento' ? fmt(v) : `${v} vendas`, name === 'faturamento' ? 'Faturamento' : 'Vendas']}
+                formatter={(v: number, name: string) => {
+                  if (name === 'compVendas') return [`${v} vendas`, compLabel];
+                  if (name === 'vendas') return [`${v} vendas`, currentLabel];
+                  return [fmt(v), name];
+                }}
               />
-              <Bar dataKey="vendas" name="Vendas" radius={[0, 4, 4, 0]}>
+              {hasComparison && (
+                <Bar dataKey="compVendas" name="compVendas" radius={[0, 4, 4, 0]} opacity={0.3}>
+                  {empresaData.map((entry) => (
+                    <Cell key={`comp-${entry.name}`} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
+                  ))}
+                </Bar>
+              )}
+              <Bar dataKey="vendas" name="vendas" radius={[0, 4, 4, 0]}>
                 {empresaData.map((entry) => (
                   <Cell key={entry.name} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
                 ))}
@@ -335,6 +364,7 @@ export function TabGraficos() {
                   formatter={(v: number) => `${v} vendas`}
                 />
               </Bar>
+              {hasComparison && <Legend wrapperStyle={{ fontSize: 10 }} formatter={(value: string) => value === 'compVendas' ? compLabel : currentLabel} />}
             </BarChart>
           </ResponsiveContainer>
           {/* Faturamento labels below */}
@@ -343,6 +373,9 @@ export function TabGraficos() {
               <div key={e.name} className="text-center">
                 <p className="text-[10px] text-muted-foreground">{e.name}</p>
                 <p className="text-xs font-bold" style={{ color: EMPRESA_COLORS[e.name] || 'hsl(215,16%,47%)' }}>{fmt(e.faturamento)}</p>
+                {hasComparison && e.compFaturamento > 0 && (
+                  <p className="text-[10px] text-muted-foreground">Ant: {fmt(e.compFaturamento)}</p>
+                )}
               </div>
             ))}
           </div>

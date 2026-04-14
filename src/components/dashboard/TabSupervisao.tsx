@@ -1,14 +1,28 @@
 import { useState } from 'react';
-import { useFilteredData } from '@/lib/use-filtered-data';
+import { useFilteredData, calcVariation } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
-import { Users, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, AlertTriangle, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const PAGE_SIZE = 6;
 
+function VariationBadge({ current, previous }: { current: number; previous: number | undefined }) {
+  if (previous === undefined) return null;
+  const variation = calcVariation(current, previous);
+  if (variation === undefined) return <span className="text-[9px] text-muted-foreground">N/A</span>;
+  const isPositive = variation > 0;
+  const isZero = variation === 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold tabular-nums ${isZero ? 'text-muted-foreground' : isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+      {isZero ? <Minus className="h-2.5 w-2.5" /> : isPositive ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+      {isPositive ? '+' : ''}{variation.toFixed(1)}%
+    </span>
+  );
+}
+
 export function TabSupervisao() {
-  const { stats } = useFilteredData();
+  const { stats, compStats, hasComparison } = useFilteredData();
   const { userInfo } = useFilters();
   const [page, setPage] = useState(0);
 
@@ -51,6 +65,8 @@ export function TabSupervisao() {
         })
         .sort((a, b) => b.faturamento - a.faturamento);
 
+      const compData = compStats?.porSupervisor[nome];
+
       return {
         nome,
         faturamento: data.faturamento,
@@ -58,6 +74,10 @@ export function TabSupervisao() {
         produtos: data.produtos,
         vendasInternet: data.vendasInternet,
         vendedores: vendedoresList,
+        compFaturamento: compData?.faturamento,
+        compVendas: compData?.vendas,
+        compProdutos: compData?.produtos,
+        compVendasInternet: compData?.vendasInternet,
       };
     })
     .sort((a, b) => b.faturamento - a.faturamento);
@@ -101,18 +121,42 @@ export function TabSupervisao() {
               <div className="bg-surface rounded-md p-2 sm:p-3">
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Faturamento</p>
                 <p className="text-sm sm:text-lg font-bold text-foreground tabular-nums">{fmt(sup.faturamento)}</p>
+                {hasComparison && sup.compFaturamento !== undefined && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-muted-foreground tabular-nums">{fmt(sup.compFaturamento)}</span>
+                    <VariationBadge current={sup.faturamento} previous={sup.compFaturamento} />
+                  </div>
+                )}
               </div>
               <div className="bg-surface rounded-md p-2 sm:p-3">
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Vendas</p>
                 <p className="text-sm sm:text-lg font-bold text-foreground tabular-nums">{sup.vendas}</p>
+                {hasComparison && sup.compVendas !== undefined && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-muted-foreground tabular-nums">{sup.compVendas}</span>
+                    <VariationBadge current={sup.vendas} previous={sup.compVendas} />
+                  </div>
+                )}
               </div>
               <div className="bg-surface rounded-md p-2 sm:p-3">
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Produtos</p>
                 <p className="text-sm sm:text-lg font-bold text-foreground tabular-nums">{sup.produtos}</p>
+                {hasComparison && sup.compProdutos !== undefined && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-muted-foreground tabular-nums">{sup.compProdutos}</span>
+                    <VariationBadge current={sup.produtos} previous={sup.compProdutos} />
+                  </div>
+                )}
               </div>
               <div className="bg-surface rounded-md p-2 sm:p-3">
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Virtua</p>
                 <p className="text-sm sm:text-lg font-bold text-foreground tabular-nums">{sup.vendasInternet}</p>
+                {hasComparison && sup.compVendasInternet !== undefined && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-muted-foreground tabular-nums">{sup.compVendasInternet}</span>
+                    <VariationBadge current={sup.vendasInternet} previous={sup.compVendasInternet} />
+                  </div>
+                )}
               </div>
             </div>
 

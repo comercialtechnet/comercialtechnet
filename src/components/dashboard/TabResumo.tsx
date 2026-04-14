@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useFilteredData, calcVariation } from '@/lib/use-filtered-data';
+import { useFilters } from '@/lib/filters-context';
+import { formatPeriodLabel } from '@/lib/monthly-goals';
 import { KPICard } from './KPICard';
 import { DollarSign, ShoppingCart, Package, Layers, Receipt, Users, UserCheck, Wifi } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
@@ -34,7 +36,11 @@ const fmtNum = (n: number) => n.toLocaleString('pt-BR');
 
 export function TabResumo() {
   const { stats, compStats, hasComparison } = useFilteredData();
+  const { filters } = useFilters();
   const [activeComboName, setActiveComboName] = useState<string | null>(null);
+
+  const currentLabel = formatPeriodLabel(filters.dataInicio) || 'Atual';
+  const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
 
   const catData = Object.entries(stats.porCategoria)
     .sort((a, b) => b[1].faturamento - a[1].faturamento)
@@ -122,7 +128,7 @@ export function TabResumo() {
             <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 80, left: 5, bottom: 5 }}>
               <XAxis type="number" tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-              <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number) => [fmt(v)]} />
+              <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number, name: string) => [fmt(v), name === 'compFaturamento' ? compLabel : currentLabel]} />
               {hasComparison && compStats && (
                 <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3}>
                   {catData.map((entry) => (

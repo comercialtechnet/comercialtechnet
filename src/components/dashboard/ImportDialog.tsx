@@ -194,21 +194,21 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="bg-card border border-border rounded-lg p-3 text-center">
+                  <div className="bg-card border border-border rounded-lg p-3 text-center overflow-hidden">
                     <p className="text-lg font-bold text-foreground tabular-nums">{result.vendas.length}</p>
                     <p className="text-[10px] text-muted-foreground">Vendas</p>
                   </div>
-                  <div className="bg-card border border-border rounded-lg p-3 text-center">
+                  <div className="bg-card border border-border rounded-lg p-3 text-center overflow-hidden">
                     <p className="text-lg font-bold text-foreground tabular-nums">{result.itens.length}</p>
                     <p className="text-[10px] text-muted-foreground">Itens</p>
                   </div>
-                  <div className="bg-card border border-border rounded-lg p-3 text-center">
-                    <p className="text-lg font-bold text-primary tabular-nums">
+                  <div className="bg-card border border-border rounded-lg p-3 text-center overflow-hidden min-w-0">
+                    <p className="text-sm font-bold text-primary tabular-nums truncate">
                       {fmt(result.vendas.reduce((s, v) => s + v.valor_total, 0))}
                     </p>
                     <p className="text-[10px] text-muted-foreground">Faturamento</p>
                   </div>
-                  <div className="bg-card border border-border rounded-lg p-3 text-center">
+                  <div className="bg-card border border-border rounded-lg p-3 text-center overflow-hidden">
                     <p className="text-lg font-bold text-foreground tabular-nums">
                       {new Set(result.vendas.map(v => v.vendedor_normalizado)).size}
                     </p>
