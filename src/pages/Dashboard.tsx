@@ -85,16 +85,18 @@ export default function Dashboard() {
   const ActiveComponent = tabComponents[visibleTabIds.includes(activeTab) ? activeTab : 'resumo'];
   const effectiveActiveTab = visibleTabIds.includes(activeTab) ? activeTab : 'resumo';
 
-  if (isLoadingFromDB) {
+  if (isLoadingFromDB || !userInfo) {
     return <LoadingScreen />;
   }
 
-  // Verifica se o usuário precisa de vinculação
+  // Verifica se o usuário precisa de vinculação (só quando userInfo já carregou)
   const perfil = userInfo?.perfil || 'vendedor';
   const isSupervisor = perfil === 'supervisor';
   const isVendedor = perfil === 'vendedor' || perfil === 'consultor';
-  const needsLink = (isSupervisor && !userInfo?.nome_supervisor_vinculado) ||
-                    (isVendedor && !userInfo?.nome_vendedor_vinculado);
+  const needsLink = userInfo !== null && (
+    (isSupervisor && !userInfo?.nome_supervisor_vinculado) ||
+    (isVendedor && !userInfo?.nome_vendedor_vinculado)
+  );
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
