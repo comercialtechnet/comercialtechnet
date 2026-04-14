@@ -55,9 +55,9 @@ export function TabResumo() {
 
   const compComboData = compStats
     ? Object.entries(compStats.porComboTipo)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, value]) => ({ name, value }))
     : [];
 
   return (
@@ -120,7 +120,7 @@ export function TabResumo() {
           <h3 className="text-sm font-semibold text-foreground mb-4">Faturamento por Categoria</h3>
           <ResponsiveContainer width="100%" height={Math.max(220, catData.length * 40)}>
             <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 80, left: 5, bottom: 5 }}>
-              <XAxis type="number" tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
+              <XAxis type="number" tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
               <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number) => [fmt(v)]} />
               {hasComparison && compStats && (
@@ -134,9 +134,8 @@ export function TabResumo() {
                 {catData.map((entry) => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}
-                <LabelList dataKey="faturamento" position="right" formatter={(v: number) => `R$ ${(v/1000).toFixed(0)}k`} style={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} />
+                <LabelList dataKey="faturamento" position="right" formatter={(v: number) => `R$ ${(v / 1000).toFixed(2)}k`} style={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} />
               </Bar>
-              {hasComparison && compStats && <Legend wrapperStyle={{ fontSize: 10 }} />}
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -10,6 +10,8 @@ import { formatMonthKey, generateMonthKey } from '@/lib/monthly-goals';
 import { saveMetasToDatabase, deleteMetaFromDatabase } from '@/lib/db-service';
 import { MonthlyGoal } from '@/lib/types';
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
+import { NumericFormat } from "react-number-format";
+
 
 interface ProfileUser {
   id: string;
@@ -44,7 +46,7 @@ export function TabAdmin() {
 
   const [addGoalOpen, setAddGoalOpen] = useState(false);
   const [newGoalMonth, setNewGoalMonth] = useState('');
-  const [newGoalFat, setNewGoalFat] = useState('');
+  const [newGoalFat, setNewGoalFat] = useState<number | undefined>(undefined);
   const [newGoalVendas, setNewGoalVendas] = useState('');
   const [newGoalVirtua, setNewGoalVirtua] = useState('');
 
@@ -152,7 +154,7 @@ export function TabAdmin() {
     }
 
     const newGoal: MonthlyGoal = {
-      meta_faturamento: parseFloat(newGoalFat) || 0,
+      meta_faturamento: newGoalFat || 0,
       meta_total_vendas: parseFloat(newGoalVendas) || 0,
       meta_vendas_virtua: parseFloat(newGoalVirtua) || 0,
     };
@@ -170,7 +172,7 @@ export function TabAdmin() {
 
     setAddGoalOpen(false);
     setNewGoalMonth('');
-    setNewGoalFat('');
+    setNewGoalFat(undefined);
     setNewGoalVendas('');
     setNewGoalVirtua('');
   };
@@ -469,7 +471,21 @@ export function TabAdmin() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Meta Faturamento (R$)</label>
-              <Input type="number" className="mt-1" placeholder="Ex: 100000" value={newGoalFat} onChange={e => setNewGoalFat(e.target.value)} />
+              <NumericFormat
+                customInput={Input}
+                className="mt-1"
+                placeholder="Ex: R$ 10.000,00"
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                allowNegative={false}
+                value={newGoalFat}
+                onValueChange={(values) => {
+                  setNewGoalFat(values.floatValue);
+                }}
+              />
             </div>
             <div>
               <label className="text-xs text-muted-foreground">Meta Total Vendas</label>
@@ -508,7 +524,7 @@ export function TabAdmin() {
                       <p className="text-[10px] sm:text-xs text-muted-foreground">Solicitou: <span className="font-medium">{u.perfil}</span></p>
                       <div className="mt-1.5">
                         <label className="text-[9px] text-muted-foreground uppercase block mb-0.5">Cargo para aprovação</label>
-                        <Select value={pendingRoles[u.id] || u.perfil} onValueChange={v => setPendingRoles(prev => ({...prev, [u.id]: v}))}>
+                        <Select value={pendingRoles[u.id] || u.perfil} onValueChange={v => setPendingRoles(prev => ({ ...prev, [u.id]: v }))}>
                           <SelectTrigger className="h-7 text-xs w-40">
                             <SelectValue />
                           </SelectTrigger>
@@ -551,8 +567,8 @@ export function TabAdmin() {
                       <p className="text-[10px] text-muted-foreground">{u.nome_normalizado}</p>
                     </div>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${u.status_aprovacao === 'aprovado' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                        u.status_aprovacao === 'pendente' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      u.status_aprovacao === 'pendente' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                       }`}>{u.status_aprovacao}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
@@ -691,8 +707,8 @@ export function TabAdmin() {
                       </td>
                       <td>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${u.status_aprovacao === 'aprovado' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                            u.status_aprovacao === 'pendente' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          u.status_aprovacao === 'pendente' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                           }`}>{u.status_aprovacao}</span>
                       </td>
                       <td>
