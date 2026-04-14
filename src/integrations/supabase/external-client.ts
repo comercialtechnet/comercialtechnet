@@ -6,12 +6,21 @@ const EXTERNAL_SUPABASE_ANON_KEY = 'sb_publishable_agXtrf4zSNNvkZDoJuEr7A_WT_ZFC
 
 let client: SupabaseClient;
 try {
-  client = createClient(EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_ANON_KEY);
+  client = createClient(EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_ANON_KEY, {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
 } catch (e) {
   console.error('Failed to create external Supabase client:', e);
-  // Create a fallback that won't crash the app
   client = createClient(EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_ANON_KEY, {
-    auth: { persistSession: false },
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
   });
 }
 

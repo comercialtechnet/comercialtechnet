@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useFilters } from '@/lib/filters-context';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X, Search, SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Calendar } from 'lucide-react';
 import { mockVendas } from '@/lib/mock-data';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
+import { MultiSelectFilter } from './MultiSelectFilter';
 
 export function FilterBar() {
   const { filters, setFilters, resetFilters, importedData } = useFilters();
@@ -16,6 +16,11 @@ export function FilterBar() {
 
   const vendedores = useMemo(() => {
     const set = new Set(sourceVendas.map(v => v.vendedor));
+    return Array.from(set).sort();
+  }, [sourceVendas]);
+
+  const empresas = useMemo(() => {
+    const set = new Set(sourceVendas.map(v => v.empresa_venda).filter(Boolean));
     return Array.from(set).sort();
   }, [sourceVendas]);
 
@@ -43,40 +48,27 @@ export function FilterBar() {
     return opts;
   }, [sourceVendas]);
 
-  // Auto-show comparison section if comparison dates are set
   useEffect(() => {
     if (filters.compDataInicio || filters.compDataFim) {
       setShowComp(true);
     }
   }, [filters.compDataInicio, filters.compDataFim]);
 
+  const updateArray = (key: string, value: string[]) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
   const update = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const hasActiveFilters = filters.vendedor || filters.supervisor || filters.tipoVenda || filters.tipoFiltro || filters.busca;
+  const hasActiveFilters = filters.vendedor.length > 0 || filters.supervisor.length > 0 || filters.tipoVenda.length > 0 || filters.tipoFiltro.length > 0 || filters.empresa.length > 0 || filters.busca;
 
   const currentPeriodLabel = filters.dataInicio ? formatPeriodLabel(filters.dataInicio) : '';
   const compPeriodLabel = filters.compDataInicio ? formatPeriodLabel(filters.compDataInicio) : '';
 
-  const renderSelect = (value: string, key: string, placeholder: string, options: { value: string; label: string }[], allLabel: string, className?: string) => (
-    <Select value={value || 'all'} onValueChange={v => update(key, v === 'all' ? '' : v)}>
-      <SelectTrigger className={`h-8 text-xs ${className || ''}`}><SelectValue placeholder={placeholder} /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">{allLabel}</SelectItem>
-        {options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-      </SelectContent>
-    </Select>
-  );
-
-  const vendedorOpts = vendedores.map(v => ({ value: v, label: v }));
-  const supervisorOpts = supervisores.map(v => ({ value: v, label: v }));
-  const tipoVendaOpts = tiposVenda.map(v => ({ value: v, label: v }));
-  const tipoFiltroOpts = tipoOptions.map(v => ({ value: v, label: v }));
-
   return (
     <div className="filter-bar space-y-2">
-      {/* Period labels */}
       {(currentPeriodLabel || compPeriodLabel) && (
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {currentPeriodLabel && (
@@ -103,11 +95,11 @@ export function FilterBar() {
 
         {/* Desktop filters */}
         <div className="hidden md:contents">
-          {renderSelect(filters.vendedor, 'vendedor', 'Vendedor', vendedorOpts, 'Todos vendedores', 'w-40')}
-          {renderSelect(filters.supervisor, 'supervisor', 'Supervisor', supervisorOpts, 'Todos supervisores', 'w-40')}
-          {renderSelect(filters.tipoVenda, 'tipoVenda', 'Tipo Venda', tipoVendaOpts, 'Todos tipos venda', 'w-32')}
-          {renderSelect(filters.tipoFiltro, 'tipoFiltro', 'Tipo Produto', tipoFiltroOpts, 'Todos produtos', 'w-40')}
-          <div className="relative">
+          <MultiSelectFilter label="Empresa" options={empresas} selected={filters.empresa} onChange={v => updateArray('empresa', v)} className="w-32" />
+          <MultiSelectFilter label="Vendedor" options={vendedores} selected={filters.vendedor} onChange={v => updateArray('vendedor', v)} className="w-40" />
+          <MultiSelectFilter label="Supervisor" options={supervisores} selected={filters.supervisor} onChange={v => updateArray('supervisor', v)} className="w-40" />
+          <MultiSelectFilter label="Tipo Venda" options={tiposVenda} selected={filters.tipoVenda} onChange={v => updateArray('tipoVenda', v)} className="w-32" />
+          <MultiSelectFilter label="Tipo Produto" options={tipoOptions} selected={filters.tipoFiltro} onChange={v => updateArray('tipoFiltro', v)} className="w-40" />          <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Buscar..." className="h-8 w-48 text-xs pl-8" value={filters.busca} onChange={e => update('busca', e.target.value)} />
           </div>
@@ -154,14 +146,13 @@ export function FilterBar() {
         </div>
       )}
 
-      {/* Mobile expanded */}
       {expanded && (
         <div className="grid grid-cols-2 gap-2 mt-1 md:hidden">
-          {renderSelect(filters.vendedor, 'vendedor', 'Vendedor', vendedorOpts, 'Todos vendedores')}
-          {renderSelect(filters.supervisor, 'supervisor', 'Supervisor', supervisorOpts, 'Todos supervisores')}
-          {renderSelect(filters.tipoVenda, 'tipoVenda', 'Tipo Venda', tipoVendaOpts, 'Todos tipos venda')}
-          {renderSelect(filters.tipoFiltro, 'tipoFiltro', 'Tipo Produto', tipoFiltroOpts, 'Todos produtos')}
-          <div className="relative col-span-2">
+          <MultiSelectFilter label="Empresa" options={empresas} selected={filters.empresa} onChange={v => updateArray('empresa', v)} />
+          <MultiSelectFilter label="Vendedor" options={vendedores} selected={filters.vendedor} onChange={v => updateArray('vendedor', v)} />
+          <MultiSelectFilter label="Supervisor" options={supervisores} selected={filters.supervisor} onChange={v => updateArray('supervisor', v)} />
+          <MultiSelectFilter label="Tipo Venda" options={tiposVenda} selected={filters.tipoVenda} onChange={v => updateArray('tipoVenda', v)} />
+          <MultiSelectFilter label="Tipo Produto" options={tipoOptions} selected={filters.tipoFiltro} onChange={v => updateArray('tipoFiltro', v)} />          <div className="relative col-span-2">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Buscar..." className="h-8 text-xs pl-8" value={filters.busca} onChange={e => update('busca', e.target.value)} />
           </div>

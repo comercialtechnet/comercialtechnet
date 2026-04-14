@@ -28,11 +28,18 @@ const CATEGORY_COLORS: Record<string, string> = {
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function TabProdutos() {
-  const { stats, filteredItens } = useFilteredData();
+  const { stats, filteredItens, compStats, hasComparison } = useFilteredData();
 
   const catData = Object.entries(stats.porCategoria)
-    .sort((a, b) => b[1].faturamento - a[1].faturamento)
-    .map(([name, data]) => ({ name, ...data }));
+    .sort((a, b) => b[1].quantidade - a[1].quantidade)
+    .map(([name, data]) => {
+      const compCat = compStats?.porCategoria[name];
+      return {
+        name,
+        ...data,
+        compQuantidade: compCat?.quantidade || 0,
+      };
+    });
 
   const topProdutos = (() => {
     const map: Record<string, { count: number; fat: number }> = {};
@@ -71,12 +78,19 @@ export function TabProdutos() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">Quantidade por Categoria</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={catData}>
-              <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-30} textAnchor="end" height={60} interval={0} />
-              <YAxis tick={{ fontSize: 10 }} />
+          <ResponsiveContainer width="100%" height={430}>
+            <BarChart data={catData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+              <XAxis dataKey="name" tick={{ fontSize: 8 }} angle={-35} textAnchor="end" height={80} interval={0} />
+              <YAxis tick={{ fontSize: 10 }} width={30} />
               <Tooltip {...themedTooltip} labelFormatter={(label) => label} />
-              <Bar dataKey="quantidade" radius={[4, 4, 0, 0]}>
+              {hasComparison && compStats && (
+                <Bar dataKey="compQuantidade" name="Período anterior" radius={[4, 4, 0, 0]} opacity={0.3}>
+                  {catData.map(entry => (
+                    <Cell key={`comp-${entry.name}`} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
+                  ))}
+                </Bar>
+              )}
+              <Bar dataKey="quantidade" name="Período atual" radius={[4, 4, 0, 0]}>
                 {catData.map(entry => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}

@@ -14,6 +14,7 @@ export function TabRanking() {
   const { stats } = useFilteredData();
   const [metric, setMetric] = useState<MetricKey>('faturamento');
   const [page, setPage] = useState(0);
+  const [supPage, setSupPage] = useState(0);
 
   const ranking = Object.entries(stats.porVendedor)
     .map(([nome, data]) => ({ nome, ...data }))
@@ -32,6 +33,10 @@ export function TabRanking() {
     .sort((a, b) => b[metric] - a[metric]);
 
   const maxValSup = rankingSup[0]?.[metric] || 1;
+  const totalSupPages = Math.max(1, Math.ceil(rankingSup.length / PAGE_SIZE));
+  const currentSupPage = Math.min(supPage, totalSupPages - 1);
+  const pagedRankingSup = rankingSup.slice(currentSupPage * PAGE_SIZE, (currentSupPage + 1) * PAGE_SIZE);
+  const globalSupOffset = currentSupPage * PAGE_SIZE;
 
   const formatValue = (v: number, m: MetricKey) => m === 'faturamento' ? fmt(v) : String(v);
 
@@ -39,6 +44,7 @@ export function TabRanking() {
   const handleMetricChange = (v: string) => {
     setMetric(v as MetricKey);
     setPage(0);
+    setSupPage(0);
   };
 
   return (
@@ -104,12 +110,13 @@ export function TabRanking() {
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">Ranking de Supervisores</h3>
           <div className="space-y-2.5 sm:space-y-3">
-            {rankingSup.map((s, i) => {
-              const Icon = i < 3 ? trophyIcons[i] : null;
+            {pagedRankingSup.map((s, i) => {
+              const globalIndex = globalSupOffset + i;
+              const Icon = globalIndex < 3 ? trophyIcons[globalIndex] : null;
               return (
                 <div key={s.nome} className="flex items-center gap-2 sm:gap-3">
                   <div className="w-6 sm:w-7 flex justify-center shrink-0">
-                    {Icon ? <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-400' : 'text-amber-600'}`} /> : <span className="text-[10px] sm:text-xs font-mono text-muted-foreground tabular-nums">{i + 1}</span>}
+                    {Icon ? <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${globalIndex === 0 ? 'text-yellow-500' : globalIndex === 1 ? 'text-slate-400' : 'text-amber-600'}`} /> : <span className="text-[10px] sm:text-xs font-mono text-muted-foreground tabular-nums">{globalIndex + 1}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs sm:text-sm font-medium text-foreground truncate">{s.nome}</p>
@@ -123,6 +130,22 @@ export function TabRanking() {
               );
             })}
           </div>
+          {totalSupPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+              <span className="text-[10px] sm:text-xs text-muted-foreground">
+                {globalSupOffset + 1}–{Math.min(globalSupOffset + PAGE_SIZE, rankingSup.length)} de {rankingSup.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={currentSupPage === 0} onClick={() => setSupPage(p => p - 1)}>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-xs text-muted-foreground tabular-nums px-1">{currentSupPage + 1}/{totalSupPages}</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={currentSupPage >= totalSupPages - 1} onClick={() => setSupPage(p => p + 1)}>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

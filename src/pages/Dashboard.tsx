@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Zap, Upload, LogOut, Menu, Sun, Moon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/hooks/use-theme';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
-const tabs: { id: DashboardTab; label: string }[] = [
+const allTabs: { id: DashboardTab; label: string }[] = [
   { id: 'resumo', label: 'Resumo' },
   { id: 'kpis', label: 'KPIs' },
   { id: 'produtos', label: 'Produtos' },
@@ -43,9 +43,8 @@ const tabComponents: Record<DashboardTab, React.FC> = {
 };
 
 export default function Dashboard() {
-  const { activeTab, setActiveTab, isLoadingFromDB, reloadFromDatabase } = useFilters();
+  const { activeTab, setActiveTab, isLoadingFromDB, reloadFromDatabase, userInfo } = useFilters();
   const navigate = useNavigate();
-  const ActiveComponent = tabComponents[activeTab];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const { dark, toggle: toggleTheme } = useTheme();
@@ -65,6 +64,24 @@ export default function Dashboard() {
     setActiveTab(id);
     setMobileMenuOpen(false);
   };
+
+  // Filtrar abas baseado no perfil do usuário
+  const tabs = useMemo(() => {
+    const perfil = userInfo?.perfil || 'vendedor';
+    const isAdmin = perfil === 'administrador';
+    const isSupervisor = perfil === 'supervisor';
+
+    return allTabs.filter(tab => {
+      if (tab.id === 'admin') return isAdmin;
+      if (tab.id === 'supervisao') return isAdmin || isSupervisor;
+      return true;
+    });
+  }, [userInfo]);
+
+  // Se a aba ativa não está mais visível, voltar para resumo
+  const visibleTabIds = tabs.map(t => t.id);
+  const ActiveComponent = tabComponents[visibleTabIds.includes(activeTab) ? activeTab : 'resumo'];
+  const effectiveActiveTab = visibleTabIds.includes(activeTab) ? activeTab : 'resumo';
 
   if (isLoadingFromDB) {
     return <LoadingScreen />;
@@ -117,7 +134,7 @@ export default function Dashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
-                activeTab === tab.id
+                effectiveActiveTab === tab.id
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
@@ -136,10 +153,10 @@ export default function Dashboard() {
             className="flex items-center gap-2 text-sm font-medium text-foreground"
           >
             <Menu className="h-4 w-4" />
-            {tabs.find(t => t.id === activeTab)?.label}
+            {tabs.find(t => t.id === effectiveActiveTab)?.label}
           </button>
           <span className="text-xs text-muted-foreground">
-            {tabs.findIndex(t => t.id === activeTab) + 1}/{tabs.length}
+            {tabs.findIndex(t => t.id === effectiveActiveTab) + 1}/{tabs.length}
           </span>
         </div>
         {/* Scrollable pill tabs for quick access */}
@@ -149,7 +166,7 @@ export default function Dashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap rounded-full transition-colors shrink-0 ${
-                activeTab === tab.id
+                effectiveActiveTab === tab.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-surface text-muted-foreground'
               }`}
@@ -172,7 +189,7 @@ export default function Dashboard() {
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 className={`w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === tab.id
+                  effectiveActiveTab === tab.id
                     ? 'bg-primary/10 text-primary'
                     : 'text-foreground hover:bg-surface'
                 }`}
@@ -197,7 +214,7 @@ export default function Dashboard() {
       <main className="p-3 sm:p-4 md:p-6">
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab}
+            key={effectiveActiveTab}
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}

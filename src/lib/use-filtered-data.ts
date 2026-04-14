@@ -2,20 +2,22 @@ import { useMemo } from 'react';
 import { useFilters } from './filters-context';
 import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
 
-function applyTipoFilter(v: Venda, tipoFiltro: string): boolean {
-  if (!tipoFiltro) return true;
-  switch (tipoFiltro) {
-    case 'Internet': return v.possui_internet;
-    case 'TV': return v.possui_tv;
-    case 'Móvel': return v.possui_movel;
-    case 'Telefone': return v.possui_telefone;
-    case 'WiFi Mesh': return v.possui_mesh;
-    case 'Ponto Extra': return v.possui_ponto_extra;
-    case 'Mudança de Tecnologia': return v.possui_mudanca_tecnologia;
-    case 'Combo': return v.e_combo;
-    case 'Single': return !v.e_combo;
-    default: return true;
-  }
+function applyTipoFilter(v: Venda, tipoFiltro: string[]): boolean {
+  if (!tipoFiltro || tipoFiltro.length === 0) return true;
+  return tipoFiltro.some(filtro => {
+    switch (filtro) {
+      case 'Internet': return v.possui_internet;
+      case 'TV': return v.possui_tv;
+      case 'Móvel': return v.possui_movel;
+      case 'Telefone': return v.possui_telefone;
+      case 'WiFi Mesh': return v.possui_mesh;
+      case 'Ponto Extra': return v.possui_ponto_extra;
+      case 'Mudança de Tecnologia': return v.possui_mudanca_tecnologia;
+      case 'Combo': return v.e_combo;
+      case 'Single': return !v.e_combo;
+      default: return true;
+    }
+  });
 }
 
 function filterVendas(
@@ -30,14 +32,15 @@ function filterVendas(
   return vendas.filter((v: Venda) => {
     if (dInicio && v.data_instalacao < dInicio) return false;
     if (dFim && v.data_instalacao > dFim) return false;
-    if (filters.vendedor && v.vendedor_normalizado !== filters.vendedor.toUpperCase()) return false;
-    if (filters.supervisor && v.supervisor_normalizado !== filters.supervisor.toUpperCase()) return false;
+    if (filters.vendedor.length > 0 && !filters.vendedor.some(f => f.toUpperCase() === v.vendedor_normalizado)) return false;
+    if (filters.supervisor.length > 0 && !filters.supervisor.some(f => f.toUpperCase() === v.supervisor_normalizado)) return false;
+    if (filters.empresa.length > 0 && !filters.empresa.includes(v.empresa_venda)) return false;
     if (filters.categoriaPrincipal) {
       // Use venda UUID (id) for matching itens
       const vendaItens = itens.filter(it => it.venda_id === v.id);
       if (!vendaItens.some(it => it.categoria_principal === filters.categoriaPrincipal)) return false;
     }
-    if (filters.tipoVenda && v.tipo_venda !== filters.tipoVenda) return false;
+    if (filters.tipoVenda.length > 0 && !filters.tipoVenda.includes(v.tipo_venda)) return false;
     if (filters.tipoCliente && v.tipo_cliente !== filters.tipoCliente) return false;
     if (filters.formaPagamento && v.forma_pagamento !== filters.formaPagamento) return false;
     if (!applyTipoFilter(v, filters.tipoFiltro)) return false;
@@ -55,7 +58,6 @@ function filterVendas(
 }
 
 function computeStats(vendas: Venda[], itens: ItemVenda[]): DashboardStats {
-  // Use venda UUID (id) for matching itens
   const vendaIds = new Set(vendas.map(v => v.id));
   const filteredItens = itens.filter(it => vendaIds.has(it.venda_id));
 
@@ -87,13 +89,12 @@ function computeStats(vendas: Venda[], itens: ItemVenda[]): DashboardStats {
     if (v.possui_internet) porVendedor[v.vendedor].vendasInternet += 1;
   });
 
-  const porSupervisor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendedores: Set<string> }> = {};
-  vendas.forEach(v => {
-    if (!porSupervisor[v.supervisor]) porSupervisor[v.supervisor] = { faturamento: 0, vendas: 0, produtos: 0, combos: 0, vendedores: new Set() };
-    porSupervisor[v.supervisor].faturamento += v.valor_total;
+  const porSupervisor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendasInternet: number; vendedores: Set<string> }> = {}; vendas.forEach(v => {
+    if (!porSupervisor[v.supervisor]) porSupervisor[v.supervisor] = { faturamento: 0, vendas: 0, produtos: 0, combos: 0, vendasInternet: 0, vendedores: new Set() }; porSupervisor[v.supervisor].faturamento += v.valor_total;
     porSupervisor[v.supervisor].vendas += 1;
     porSupervisor[v.supervisor].produtos += v.quantidade_itens;
     if (v.e_combo) porSupervisor[v.supervisor].combos += 1;
+    if (v.possui_internet) porSupervisor[v.supervisor].vendasInternet += 1;
     porSupervisor[v.supervisor].vendedores.add(v.vendedor);
   });
 
@@ -126,7 +127,6 @@ export function useFilteredData() {
   }, [filters, sourceVendas, sourceItens]);
 
   const filteredItens = useMemo(() => {
-    // Use venda UUID (id) for matching
     const vendaIds = new Set(filteredVendas.map(v => v.id));
     return sourceItens.filter(it => vendaIds.has(it.venda_id));
   }, [filteredVendas, sourceItens]);
@@ -135,7 +135,6 @@ export function useFilteredData() {
     return computeStats(filteredVendas, sourceItens);
   }, [filteredVendas, sourceItens]);
 
-  // Comparison period
   const hasComparison = !!(filters.compDataInicio && filters.compDataFim);
 
   const compFilteredVendas = useMemo(() => {

@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useFilteredData, calcVariation } from '@/lib/use-filtered-data';
 import { KPICard } from './KPICard';
 import { DollarSign, ShoppingCart, Package, Layers, Receipt, Users, UserCheck, Wifi } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
+
+const COLORS_LIST = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
 
 const themedTooltip = {
   contentStyle: {
@@ -31,6 +34,7 @@ const fmtNum = (n: number) => n.toLocaleString('pt-BR');
 
 export function TabResumo() {
   const { stats, compStats, hasComparison } = useFilteredData();
+  const [activeComboName, setActiveComboName] = useState<string | null>(null);
 
   const catData = Object.entries(stats.porCategoria)
     .sort((a, b) => b[1].faturamento - a[1].faturamento)
@@ -114,10 +118,10 @@ export function TabResumo() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">Faturamento por Categoria</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={catData} layout="vertical" margin={{ left: 60, right: 10 }}>
+          <ResponsiveContainer width="100%" height={Math.max(220, catData.length * 40)}>
+            <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 80, left: 5, bottom: 5 }}>
               <XAxis type="number" tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={60} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
               <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number) => [fmt(v)]} />
               {hasComparison && compStats && (
                 <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3}>
@@ -144,30 +148,94 @@ export function TabResumo() {
               {hasComparison && compComboData.length > 0 && (
                 <p className="text-[10px] font-medium text-center text-primary mb-1">Atual</p>
               )}
-              <ResponsiveContainer width="100%" height={hasComparison ? 200 : 250}>
+              <ResponsiveContainer width="100%" height={hasComparison ? 180 : 200}>
                 <PieChart>
-                  <Pie data={comboData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={hasComparison ? 60 : 80} label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`} labelLine={true} fontSize={8}>
-                    {comboData.map((_, i) => (
-                      <Cell key={i} fill={Object.values(CATEGORY_COLORS)[i % Object.values(CATEGORY_COLORS).length]} />
+                  <Pie
+                    data={comboData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={hasComparison ? 55 : 70}
+                    innerRadius={hasComparison ? 25 : 30}
+                    onClick={(data) => setActiveComboName(prev => prev === data.name ? null : data.name)}
+                  >
+                    {comboData.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={COLORS_LIST[i % COLORS_LIST.length]}
+                        style={{ outline: 'none', cursor: 'pointer' }}
+                        opacity={activeComboName === null || activeComboName === d.name ? 1 : 0.3}
+                      />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
+                {comboData.map((d, i) => {
+                  const total = comboData.reduce((s, x) => s + x.value, 0);
+                  const perc = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0';
+                  return (
+                    <div
+                      key={d.name}
+                      className="flex items-center gap-1.5 text-[10px] cursor-pointer transition-opacity"
+                      onClick={() => setActiveComboName(prev => prev === d.name ? null : d.name)}
+                      style={{ opacity: activeComboName === null || activeComboName === d.name ? 1 : 0.3 }}
+                    >
+                      <span className="inline-block h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: COLORS_LIST[i % COLORS_LIST.length] }} />
+                      <span className="text-foreground">{d.name}</span>
+                      <span className="text-muted-foreground tabular-nums">{d.value} ({perc}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             {hasComparison && compComboData.length > 0 && (
               <div>
                 <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">Anterior</p>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
-                    <Pie data={compComboData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fontSize={9} opacity={0.5}>
-                      {compComboData.map((_, i) => (
-                        <Cell key={i} fill={Object.values(CATEGORY_COLORS)[i % Object.values(CATEGORY_COLORS).length]} />
+                    <Pie
+                      data={compComboData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={55}
+                      innerRadius={25}
+                      onClick={(data) => setActiveComboName(prev => prev === data.name ? null : data.name)}
+                    >
+                      {compComboData.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={COLORS_LIST[i % COLORS_LIST.length]}
+                          style={{ outline: 'none', cursor: 'pointer' }}
+                          opacity={activeComboName === null || activeComboName === d.name ? 0.6 : 0.2}
+                        />
                       ))}
                     </Pie>
                     <Tooltip contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
                   </PieChart>
                 </ResponsiveContainer>
+                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
+                  {compComboData.map((d, i) => {
+                    const total = compComboData.reduce((s, x) => s + x.value, 0);
+                    const perc = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0';
+                    return (
+                      <div
+                        key={d.name}
+                        className="flex items-center gap-1.5 text-[10px] cursor-pointer transition-opacity"
+                        onClick={() => setActiveComboName(prev => prev === d.name ? null : d.name)}
+                        style={{ opacity: activeComboName === null || activeComboName === d.name ? 1 : 0.3 }}
+                      >
+                        <span className="inline-block h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: COLORS_LIST[i % COLORS_LIST.length] }} />
+                        <span className="text-foreground">{d.name}</span>
+                        <span className="text-muted-foreground tabular-nums">{d.value} ({perc}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

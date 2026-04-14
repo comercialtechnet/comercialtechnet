@@ -83,14 +83,15 @@ export interface RegraClassificacao {
 export interface DashboardFilters {
   dataInicio: string;
   dataFim: string;
-  vendedor: string;
-  supervisor: string;
+  vendedor: string[];
+  supervisor: string[];
   categoriaPrincipal: string;
   subcategoria: string;
-  tipoVenda: string;
+  tipoVenda: string[];
   tipoCliente: string;
   formaPagamento: string;
-  tipoFiltro: string;
+  tipoFiltro: string[];
+  empresa: string[];
   busca: string;
   compDataInicio: string;
   compDataFim: string;
@@ -109,8 +110,7 @@ export interface DashboardStats {
   vendasInternet: number;
   porCategoria: Record<string, { faturamento: number; quantidade: number }>;
   porVendedor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendasInternet: number }>;
-  porSupervisor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendedores: Set<string> }>;
-  porComboTipo: Record<string, number>;
+  porSupervisor: Record<string, { faturamento: number; vendas: number; produtos: number; combos: number; vendasInternet: number; vendedores: Set<string> }>; porComboTipo: Record<string, number>;
 }
 
 export type DashboardTab = 'resumo' | 'kpis' | 'produtos' | 'ranking' | 'graficos' | 'supervisao' | 'analise' | 'admin';

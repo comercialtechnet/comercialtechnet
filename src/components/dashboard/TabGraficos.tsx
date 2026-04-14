@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useFilteredData } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
@@ -38,48 +39,73 @@ const pieTooltipStyle = {
   itemStyle: tooltipStyle.itemStyle,
 };
 
-const renderPieLabel = ({ name, value, percent }: any) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`;
+const CustomPieLegend = ({ data, colorOffset, faded, activeName, onItemClick }: { data: { name: string; value: number }[]; colorOffset: number; faded?: boolean; activeName?: string | null; onItemClick?: (name: string) => void }) => {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const colors = faded ? COLORS_FADED : COLORS;
+  return (
+    <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+      {data.map((d, i) => {
+        const perc = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0';
+        return (
+          <div
+            key={d.name}
+            className="flex items-center gap-1.5 text-[10px] cursor-pointer transition-opacity"
+            onClick={() => onItemClick && onItemClick(d.name)}
+            style={{ opacity: !activeName || activeName === d.name ? 1 : 0.3 }}
+          >
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm shrink-0"
+              style={{ backgroundColor: colors[(i + colorOffset) % colors.length] }}
+            />
+            <span className="text-foreground">{d.name}</span>
+            <span className="text-muted-foreground tabular-nums">{d.value} ({perc}%)</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 export function TabGraficos() {
+  const [activePieName, setActivePieName] = useState<string | null>(null);
   const { filteredVendas, stats, compFilteredVendas, compStats, hasComparison } = useFilteredData();
   const { filters } = useFilters();
 
   const currentLabel = formatPeriodLabel(filters.dataInicio) || 'Atual';
   const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
 
-  // Daily data - current period
-  const daily: Record<string, { date: string; faturamento: number; vendas: number; combos: number }> = {};
-  filteredVendas.forEach(v => {
-    const d = v.data_instalacao.slice(5);
-    if (!daily[d]) daily[d] = { date: d, faturamento: 0, vendas: 0, combos: 0 };
-    daily[d].faturamento += v.valor_total;
-    daily[d].vendas += 1;
-    if (v.e_combo) daily[d].combos += 1;
-  });
-
-  const compDaily: Record<string, { compFaturamento: number; compVendas: number; compCombos: number }> = {};
-  if (hasComparison) {
-    compFilteredVendas.forEach(v => {
-      const d = v.data_instalacao.slice(5);
-      if (!compDaily[d]) compDaily[d] = { compFaturamento: 0, compVendas: 0, compCombos: 0 };
-      compDaily[d].compFaturamento += v.valor_total;
-      compDaily[d].compVendas += 1;
-      if (v.e_combo) compDaily[d].compCombos += 1;
+  // Daily data - use day index (1,2,3...) so lines overlap properly
+  const dailyByIndex = (vendas: any[]) => {
+    const byDate: Record<string, { faturamento: number; vendas: number; combos: number }> = {};
+    vendas.forEach(v => {
+      const d = v.data_instalacao;
+      if (!byDate[d]) byDate[d] = { faturamento: 0, vendas: 0, combos: 0 };
+      byDate[d].faturamento += v.valor_total;
+      byDate[d].vendas += 1;
+      if (v.e_combo) byDate[d].combos += 1;
     });
-  }
-
-  const allDays = new Set([...Object.keys(daily), ...Object.keys(compDaily)]);
-  const dailyData = Array.from(allDays)
-    .sort()
-    .map(d => ({
-      date: d,
-      faturamento: daily[d]?.faturamento || 0,
-      vendas: daily[d]?.vendas || 0,
-      combos: daily[d]?.combos || 0,
-      compFaturamento: compDaily[d]?.compFaturamento || 0,
-      compVendas: compDaily[d]?.compVendas || 0,
-      compCombos: compDaily[d]?.compCombos || 0,
+    return Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, data], idx) => ({
+      idx: idx + 1,
+      date: date.slice(5),
+      ...data,
     }));
+  };
+
+  const currentDaily = dailyByIndex(filteredVendas);
+  const compDailyRaw = hasComparison ? dailyByIndex(compFilteredVendas) : [];
+
+  // Merge by index for overlapping
+  const maxLen = Math.max(currentDaily.length, compDailyRaw.length);
+  const dailyData = Array.from({ length: maxLen }, (_, i) => ({
+    idx: i + 1,
+    date: currentDaily[i]?.date || compDailyRaw[i]?.date || '',
+    faturamento: currentDaily[i]?.faturamento || 0,
+    vendas: currentDaily[i]?.vendas || 0,
+    combos: currentDaily[i]?.combos || 0,
+    compFaturamento: compDailyRaw[i]?.faturamento || 0,
+    compVendas: compDailyRaw[i]?.vendas || 0,
+    compCombos: compDailyRaw[i]?.combos || 0,
+  }));
 
   // Tipo de venda
   const tipoVenda: Record<string, number> = {};
@@ -114,15 +140,17 @@ export function TabGraficos() {
   }
   const compFormaPagData = Object.entries(compFormaPag).map(([name, value]) => ({ name, value }));
 
-  // Vendas por empresa
-  const empresaVendas: Record<string, number> = {};
+  // Vendas por empresa - now with faturamento
+  const empresaVendas: Record<string, { vendas: number; faturamento: number }> = {};
   filteredVendas.forEach(v => {
     const emp = v.empresa_venda || 'Não identificado';
-    empresaVendas[emp] = (empresaVendas[emp] || 0) + 1;
+    if (!empresaVendas[emp]) empresaVendas[emp] = { vendas: 0, faturamento: 0 };
+    empresaVendas[emp].vendas += 1;
+    empresaVendas[emp].faturamento += v.valor_total;
   });
   const empresaData = Object.entries(empresaVendas)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, vendas]) => ({ name, vendas }));
+    .sort((a, b) => b[1].vendas - a[1].vendas)
+    .map(([name, data]) => ({ name, vendas: data.vendas, faturamento: data.faturamento }));
 
   const renderDualPie = (
     title: string,
@@ -130,39 +158,30 @@ export function TabGraficos() {
     compData: { name: string; value: number }[],
     colorOffset: number
   ) => (
-    <div className={hasComparison && compData.length > 0 ? 'grid grid-cols-2 gap-1' : ''}>
-      <div>
-        {hasComparison && compData.length > 0 && <p className="text-[10px] font-medium text-center text-primary mb-1">{currentLabel}</p>}
-        <ResponsiveContainer width="100%" height={hasComparison && compData.length > 0 ? 200 : 240}>
-          <PieChart>
-            <Pie
-              data={currentData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={hasComparison ? 50 : 65}
-              label={renderPieLabel}
-              labelLine={true}
-              fontSize={9}
-            >
-              {currentData.map((_, i) => <Cell key={i} fill={COLORS[(i + colorOffset) % COLORS.length]} />)}
-            </Pie>
-            <Tooltip
-              contentStyle={pieTooltipStyle.contentStyle}
-              itemStyle={pieTooltipStyle.itemStyle}
-              formatter={(value: number, name: string) => [`${value} vendas`, name]}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      {hasComparison && compData.length > 0 && (
+    <div>
+      <div className={hasComparison && compData.length > 0 ? 'grid grid-cols-2 gap-1' : ''}>
         <div>
-          <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">{compLabel}</p>
-          <ResponsiveContainer width="100%" height={200}>
+          {hasComparison && compData.length > 0 && <p className="text-[10px] font-medium text-center text-primary mb-1">{currentLabel}</p>}
+          <ResponsiveContainer width="100%" height={hasComparison && compData.length > 0 ? 180 : 200}>
             <PieChart>
-              <Pie data={compData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={50} label={renderPieLabel} labelLine={true} fontSize={9} opacity={0.5}>
-                {compData.map((_, i) => <Cell key={i} fill={COLORS_FADED[(i + colorOffset) % COLORS_FADED.length]} />)}
+              <Pie
+                data={currentData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={hasComparison ? 55 : 70}
+                innerRadius={hasComparison ? 25 : 30}
+                onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
+              >
+                {currentData.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={COLORS[(i + colorOffset) % COLORS.length]}
+                    style={{ outline: 'none', cursor: 'pointer' }}
+                    opacity={!activePieName || activePieName === d.name ? 1 : 0.3}
+                  />
+                ))}
               </Pie>
               <Tooltip
                 contentStyle={pieTooltipStyle.contentStyle}
@@ -171,8 +190,54 @@ export function TabGraficos() {
               />
             </PieChart>
           </ResponsiveContainer>
+          <CustomPieLegend
+            data={currentData}
+            colorOffset={colorOffset}
+            activeName={activePieName}
+            onItemClick={(n) => setActivePieName(prev => prev === n ? null : n)}
+          />
         </div>
-      )}
+        {hasComparison && compData.length > 0 && (
+          <div>
+            <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">{compLabel}</p>
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={compData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={55}
+                  innerRadius={25}
+                  onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
+                >
+                  {compData.map((d, i) => (
+                    <Cell
+                      key={i}
+                      fill={COLORS_FADED[(i + colorOffset) % COLORS_FADED.length]}
+                      style={{ outline: 'none', cursor: 'pointer' }}
+                      opacity={!activePieName || activePieName === d.name ? 0.6 : 0.2}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={pieTooltipStyle.contentStyle}
+                  itemStyle={pieTooltipStyle.itemStyle}
+                  formatter={(value: number, name: string) => [`${value} vendas`, name]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <CustomPieLegend
+              data={compData}
+              colorOffset={colorOffset}
+              faded
+              activeName={activePieName}
+              onItemClick={(n) => setActivePieName(prev => prev === n ? null : n)}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -187,10 +252,10 @@ export function TabGraficos() {
         {/* Evolução Faturamento */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Faturamento</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={dailyData}>
-              <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-              <YAxis tickFormatter={v => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 9 }} width={35} />
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={dailyData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
+              <XAxis dataKey="idx" tick={{ fontSize: 9 }} />
+              <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9 }} width={40} />
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={(label) => `Dia ${label}`}
@@ -208,10 +273,10 @@ export function TabGraficos() {
         {/* Evolução Vendas */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Vendas</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={dailyData}>
-              <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-              <YAxis tick={{ fontSize: 9 }} width={25} />
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={dailyData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
+              <XAxis dataKey="idx" tick={{ fontSize: 9 }} />
+              <YAxis tick={{ fontSize: 9 }} width={30} />
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={(label) => `Dia ${label}`}
@@ -250,23 +315,37 @@ export function TabGraficos() {
         {/* Vendas por Empresa */}
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Vendas por Empresa</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={empresaData} layout="vertical" margin={{ left: 20, right: 40 }}>
+          <ResponsiveContainer width="100%" height={Math.max(180, empresaData.length * 50)}>
+            <BarChart data={empresaData} layout="vertical" margin={{ top: 5, right: 90, left: 5, bottom: 5 }}>
               <XAxis type="number" tick={{ fontSize: 9 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={40} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={50} />
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={(label) => `Empresa: ${label}`}
-                formatter={(v: number) => [`${v} vendas`]}
+                formatter={(v: number, name: string) => [name === 'faturamento' ? fmt(v) : `${v} vendas`, name === 'faturamento' ? 'Faturamento' : 'Vendas']}
               />
               <Bar dataKey="vendas" name="Vendas" radius={[0, 4, 4, 0]}>
                 {empresaData.map((entry) => (
                   <Cell key={entry.name} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
                 ))}
-                <LabelList dataKey="vendas" position="right" style={{ fontSize: 11, fontWeight: 600, fill: 'hsl(var(--foreground))' }} />
+                <LabelList
+                  dataKey="vendas"
+                  position="right"
+                  style={{ fontSize: 10, fontWeight: 600, fill: 'hsl(var(--foreground))' }}
+                  formatter={(v: number) => `${v} vendas`}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          {/* Faturamento labels below */}
+          <div className="flex flex-wrap gap-4 mt-2 justify-center">
+            {empresaData.map(e => (
+              <div key={e.name} className="text-center">
+                <p className="text-[10px] text-muted-foreground">{e.name}</p>
+                <p className="text-xs font-bold" style={{ color: EMPRESA_COLORS[e.name] || 'hsl(215,16%,47%)' }}>{fmt(e.faturamento)}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

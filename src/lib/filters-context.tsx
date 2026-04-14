@@ -7,14 +7,15 @@ import { supabaseExternal as supabase } from '@/integrations/supabase/external-c
 const defaultFilters: DashboardFilters = {
   dataInicio: '',
   dataFim: '',
-  vendedor: '',
-  supervisor: '',
+  vendedor: [],
+  supervisor: [],
   categoriaPrincipal: '',
   subcategoria: '',
-  tipoVenda: '',
+  tipoVenda: [],
   tipoCliente: '',
   formaPagamento: '',
-  tipoFiltro: '',
+  tipoFiltro: [],
+  empresa: [],
   busca: '',
   compDataInicio: '',
   compDataFim: '',
@@ -26,6 +27,11 @@ export interface ImportedData {
   nomeArquivo: string;
   totalLinhas: number;
   erros: string[];
+}
+
+export interface UserInfo {
+  perfil: string;
+  nome_supervisor_vinculado: string | null;
 }
 
 interface FiltersContextType {
@@ -41,6 +47,7 @@ interface FiltersContextType {
   setMonthlyGoals: React.Dispatch<React.SetStateAction<Record<string, MonthlyGoal>>>;
   isLoadingFromDB: boolean;
   reloadFromDatabase: () => Promise<void>;
+  userInfo: UserInfo | null;
 }
 
 const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
@@ -50,6 +57,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>('resumo');
   const [importedData, setImportedData] = useState<ImportedData | null>(null);
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [monthlyGoals, setMonthlyGoals] = useState<Record<string, MonthlyGoal>>(() => {
     try {
       const saved = localStorage.getItem('technet-monthly-goals');
@@ -59,6 +67,26 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     }
   });
   const compManualRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+
+  const loadUserProfile = useCallback(async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('perfil, nome_supervisor_vinculado')
+        .eq('id', userId)
+        .single();
+
+      if (profile) {
+        setUserInfo({
+          perfil: profile.perfil || 'vendedor',
+          nome_supervisor_vinculado: profile.nome_supervisor_vinculado || null,
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar perfil do usuário:', err);
+    }
+  }, []);
 
   const reloadFromDatabase = useCallback(async () => {
     setIsLoadingFromDB(true);
@@ -70,6 +98,9 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
         setImportedData(null);
         return;
       }
+
+      // Carregar perfil do usuário
+      await loadUserProfile(session.user.id);
 
       const [dbData, dbMetas] = await Promise.all([
         loadVendasFromDatabase(),
@@ -110,10 +141,32 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoadingFromDB(false);
     }
-  }, []);
+  }, [loadUserProfile]);
 
+  // Esperar sessão estar pronta antes de carregar dados
   useEffect(() => {
-    void reloadFromDatabase();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (!hasLoadedRef.current) {
+          hasLoadedRef.current = true;
+          void reloadFromDatabase();
+        }
+      } else if (event === 'SIGNED_OUT') {
+        hasLoadedRef.current = false;
+        setImportedData(null);
+        setUserInfo(null);
+        setIsLoadingFromDB(false);
+      }
+    });
+
+    // Tentar carregar imediatamente (sessão pode já existir no localStorage)
+    void reloadFromDatabase().then(() => {
+      hasLoadedRef.current = true;
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [reloadFromDatabase]);
 
   // Persist goals to localStorage as fallback
@@ -163,6 +216,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       monthlyGoals, setMonthlyGoals,
       isLoadingFromDB,
       reloadFromDatabase,
+      userInfo,
     }}>
       {children}
     </FiltersContext.Provider>
