@@ -28,8 +28,8 @@ function classifyProduct(name: string): { categoria_principal: string; subcatego
   if (/VIRTUA|SOLAR|BANDA\s*LARGA/i.test(n)) {
     return { categoria_principal: 'Internet', subcategoria: /EMP/i.test(n) ? 'Empresarial' : 'Residencial' };
   }
-  if (/\bTV\b|CANAIS|HBO|TELECINE|PREMIERE/i.test(n) && !/PONTO/i.test(n)) {
-    return { categoria_principal: 'TV', subcategoria: /4K/i.test(n) ? 'TV 4K' : /BOX/i.test(n) ? 'TV Box' : 'TV Principal' };
+  if (/\bTV\b|CANAIS|HBO|TELECINE|PREMIERE|SOUND/i.test(n) && !/PONTO/i.test(n)) {
+    return { categoria_principal: 'TV', subcategoria: /SOUND/i.test(n) ? 'Soundbox' : /4K/i.test(n) ? 'TV 4K' : /BOX/i.test(n) ? 'TV Box' : 'TV Principal' };
   }
   if (/CHIP|MÓVEL|MOVEL|CELULAR/i.test(n) && !/DEPEND/i.test(n)) {
     return { categoria_principal: 'Móvel', subcategoria: /CONT/i.test(n) ? 'Controle' : /POS/i.test(n) ? 'Pós' : 'Pré-pago' };
@@ -51,6 +51,9 @@ function classifyProduct(name: string): { categoria_principal: string; subcatego
   }
   if (/CANAL|OPCIONAL/i.test(n)) {
     return { categoria_principal: 'TV', subcategoria: 'Canais Opcionais' };
+  }
+  if (/PONTO.*ULTRA/i.test(n)) {
+    return { categoria_principal: 'Adicionais', subcategoria: 'Ponto Ultra' };
   }
   return { categoria_principal: 'Adicionais', subcategoria: 'Geral' };
 }

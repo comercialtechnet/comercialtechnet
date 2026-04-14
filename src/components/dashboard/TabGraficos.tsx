@@ -259,7 +259,7 @@ export function TabGraficos() {
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={(label) => `Dia ${label}`}
-                formatter={(v: number, name: string) => [fmt(v), name === 'compFaturamento' ? compLabel : currentLabel]}
+                formatter={(v: number, name: string) => [fmt(v), name]}
               />
               <Line type="monotone" dataKey="faturamento" name={currentLabel} stroke="hsl(347,77%,50%)" strokeWidth={2} dot={false} />
               {hasComparison && (

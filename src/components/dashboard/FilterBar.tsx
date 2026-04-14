@@ -14,25 +14,28 @@ export function FilterBar() {
 
   const sourceVendas = importedData ? importedData.vendas : mockVendas;
 
-  const vendedores = useMemo(() => {
-    const set = new Set(sourceVendas.map(v => v.vendedor));
+  const getAvailableOptions = (ignoreKey: string, extractor: (v: typeof sourceVendas[0]) => string) => {
+    let list = sourceVendas;
+    if (ignoreKey !== 'vendedor' && filters.vendedor.length > 0) {
+      list = list.filter(v => filters.vendedor.includes(v.vendedor));
+    }
+    if (ignoreKey !== 'supervisor' && filters.supervisor.length > 0) {
+      list = list.filter(v => filters.supervisor.includes(v.supervisor));
+    }
+    if (ignoreKey !== 'empresa' && filters.empresa.length > 0) {
+      list = list.filter(v => filters.empresa.includes(String(v.empresa_venda)));
+    }
+    if (ignoreKey !== 'tipoVenda' && filters.tipoVenda.length > 0) {
+      list = list.filter(v => filters.tipoVenda.includes(v.tipo_venda));
+    }
+    const set = new Set(list.map(extractor).filter(Boolean));
     return Array.from(set).sort();
-  }, [sourceVendas]);
+  };
 
-  const empresas = useMemo(() => {
-    const set = new Set(sourceVendas.map(v => v.empresa_venda).filter(Boolean));
-    return Array.from(set).sort();
-  }, [sourceVendas]);
-
-  const supervisores = useMemo(() => {
-    const set = new Set(sourceVendas.map(v => v.supervisor));
-    return Array.from(set).sort();
-  }, [sourceVendas]);
-
-  const tiposVenda = useMemo(() => {
-    const set = new Set(sourceVendas.map(v => v.tipo_venda).filter(Boolean));
-    return Array.from(set).sort();
-  }, [sourceVendas]);
+  const vendedores = useMemo(() => getAvailableOptions('vendedor', v => v.vendedor), [sourceVendas, filters.supervisor, filters.empresa, filters.tipoVenda]);
+  const empresas = useMemo(() => getAvailableOptions('empresa', v => String(v.empresa_venda)), [sourceVendas, filters.vendedor, filters.supervisor, filters.tipoVenda]);
+  const supervisores = useMemo(() => getAvailableOptions('supervisor', v => v.supervisor), [sourceVendas, filters.vendedor, filters.empresa, filters.tipoVenda]);
+  const tiposVenda = useMemo(() => getAvailableOptions('tipoVenda', v => v.tipo_venda), [sourceVendas, filters.vendedor, filters.supervisor, filters.empresa]);
 
   const tipoOptions = useMemo(() => {
     const opts: string[] = [];
