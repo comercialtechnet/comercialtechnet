@@ -20,6 +20,7 @@ interface ProfileUser {
   ativo: boolean;
   email?: string;
   nome_supervisor_vinculado: string | null;
+  nome_vendedor_vinculado: string | null;
 }
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -54,6 +55,16 @@ export function TabAdmin() {
     return Array.from(set).sort();
   }, [importedData]);
 
+  // Lista de nomes de vendedores que existem na base de vendas
+  const vendedorNamesFromData = useMemo(() => {
+    if (!importedData?.vendas) return [];
+    const set = new Set(importedData.vendas.map(v => v.vendedor).filter(Boolean));
+    return Array.from(set).sort();
+  }, [importedData]);
+
+  // Cargo editável na tela de aprovação pendente
+  const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({});
+
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
@@ -75,6 +86,7 @@ export function TabAdmin() {
         status_aprovacao: p.status_aprovacao,
         ativo: p.ativo,
         nome_supervisor_vinculado: p.nome_supervisor_vinculado || null,
+        nome_vendedor_vinculado: p.nome_vendedor_vinculado || null,
       }));
 
       setUsers(mapped);
@@ -164,11 +176,15 @@ export function TabAdmin() {
   };
 
   const approveUser = async (id: string) => {
+    // Usar o cargo que o admin pode ter alterado, ou o original
+    const finalRole = pendingRoles[id] || users.find(u => u.id === id)?.perfil || 'vendedor';
+
     const { error } = await supabase
       .from('profiles')
       .update({
         status_aprovacao: 'aprovado' as const,
         ativo: true,
+        perfil: finalRole as any,
         aprovado_em: new Date().toISOString(),
       })
       .eq('id', id);
@@ -178,12 +194,15 @@ export function TabAdmin() {
       return;
     }
 
-    const user = users.find(u => u.id === id);
-    if (user) {
-      await supabase
-        .from('user_roles')
-        .upsert({ user_id: id, role: user.perfil as any }, { onConflict: 'user_id,role' });
-    }
+    await supabase.from('user_roles').delete().eq('user_id', id);
+    await supabase.from('user_roles').insert({ user_id: id, role: finalRole as any });
+
+    // Limpar pendingRoles para esse user
+    setPendingRoles(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
 
     toast.success('Usuário aprovado com sucesso!');
     loadUsers();
@@ -233,16 +252,27 @@ export function TabAdmin() {
     await supabase.from('user_roles').delete().eq('user_id', userId);
     await supabase.from('user_roles').insert({ user_id: userId, role: newRole as any });
 
-    // Se mudou para algo que não é supervisor, limpar o vínculo
+    // Limpar vínculos que não se aplicam ao novo perfil
+    const updates: any = {};
     if (newRole !== 'supervisor') {
+      updates.nome_supervisor_vinculado = null;
+    }
+    if (newRole !== 'vendedor' && newRole !== 'consultor') {
+      updates.nome_vendedor_vinculado = null;
+    }
+    if (Object.keys(updates).length > 0) {
       await supabase
         .from('profiles')
-        .update({ nome_supervisor_vinculado: null })
+        .update(updates)
         .eq('id', userId);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, perfil: newRole, nome_supervisor_vinculado: null } : u));
-    } else {
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, perfil: newRole } : u));
     }
+
+    setUsers(prev => prev.map(u => u.id === userId ? {
+      ...u,
+      perfil: newRole,
+      nome_supervisor_vinculado: newRole === 'supervisor' ? u.nome_supervisor_vinculado : null,
+      nome_vendedor_vinculado: (newRole === 'vendedor' || newRole === 'consultor') ? u.nome_vendedor_vinculado : null,
+    } : u));
 
     toast.success('Perfil alterado com sucesso!');
   };
@@ -262,6 +292,23 @@ export function TabAdmin() {
 
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, nome_supervisor_vinculado: value } : u));
     toast.success(value ? `Vinculado ao supervisor "${value}"` : 'Vínculo removido');
+  };
+
+  const linkVendedor = async (userId: string, vendedorName: string | null) => {
+    const value = vendedorName === '__none__' ? null : vendedorName;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ nome_vendedor_vinculado: value } as any)
+      .eq('id', userId);
+
+    if (error) {
+      toast.error('Erro ao vincular vendedor: ' + error.message);
+      return;
+    }
+
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, nome_vendedor_vinculado: value } : u));
+    toast.success(value ? `Vinculado ao vendedor "${value}"` : 'Vínculo removido');
   };
 
   const pending = users.filter(u => u.status_aprovacao === 'pendente');
@@ -458,7 +505,20 @@ export function TabAdmin() {
                   <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface rounded-lg p-3">
                     <div>
                       <p className="text-sm font-medium text-foreground">{u.nome_vinculado}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">Solicitou: {u.perfil}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">Solicitou: <span className="font-medium">{u.perfil}</span></p>
+                      <div className="mt-1.5">
+                        <label className="text-[9px] text-muted-foreground uppercase block mb-0.5">Cargo para aprovação</label>
+                        <Select value={pendingRoles[u.id] || u.perfil} onValueChange={v => setPendingRoles(prev => ({...prev, [u.id]: v}))}>
+                          <SelectTrigger className="h-7 text-xs w-40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PERFIL_OPTIONS.map(o => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1 sm:flex-none" onClick={() => approveUser(u.id)}>
@@ -533,6 +593,26 @@ export function TabAdmin() {
                       </Select>
                     </div>
                   )}
+                  {/* Vinculação de vendedor (mobile) */}
+                  {(u.perfil === 'vendedor' || u.perfil === 'consultor') && (
+                    <div className="flex items-center gap-1.5">
+                      <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <Select
+                        value={u.nome_vendedor_vinculado || '__none__'}
+                        onValueChange={v => linkVendedor(u.id, v)}
+                      >
+                        <SelectTrigger className="h-7 text-xs flex-1">
+                          <SelectValue placeholder="Vincular vendedor..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Sem vínculo</SelectItem>
+                          {vendedorNamesFromData.map(name => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               ))}
               {users.length === 0 && (
@@ -547,7 +627,7 @@ export function TabAdmin() {
                   <tr>
                     <th>Nome</th>
                     <th>Perfil</th>
-                    <th>Vínculo Supervisor</th>
+                    <th>Vínculo</th>
                     <th>Status</th>
                     <th>Ativo</th>
                     <th>Ações</th>
@@ -586,6 +666,21 @@ export function TabAdmin() {
                             <SelectContent>
                               <SelectItem value="__none__">Sem vínculo</SelectItem>
                               {supervisorNamesFromData.map(name => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (u.perfil === 'vendedor' || u.perfil === 'consultor') ? (
+                          <Select
+                            value={u.nome_vendedor_vinculado || '__none__'}
+                            onValueChange={v => linkVendedor(u.id, v)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-44">
+                              <SelectValue placeholder="Vincular..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">Sem vínculo</SelectItem>
+                              {vendedorNamesFromData.map(name => (
                                 <SelectItem key={name} value={name}>{name}</SelectItem>
                               ))}
                             </SelectContent>

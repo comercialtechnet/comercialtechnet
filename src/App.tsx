@@ -28,16 +28,48 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!mounted) return;
-      setIsAuthenticated(!!session?.user);
+
+      if (!session?.user) {
+        setIsAuthenticated(false);
+        setIsReady(true);
+        return;
+      }
+
+      // Verificar se o usuário está aprovado
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('status_aprovacao, ativo')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!profile || profile.status_aprovacao !== 'aprovado' || !profile.ativo) {
+          await supabase.auth.signOut();
+          if (mounted) {
+            setIsAuthenticated(false);
+            setIsReady(true);
+          }
+          return;
+        }
+      } catch {
+        // Se falhar a verificação, permitir acesso (fallback)
+      }
+
+      setIsAuthenticated(true);
       setIsReady(true);
-    });
+    };
+
+    checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      setIsAuthenticated(!!session?.user);
-      setIsReady(true);
+      if (_event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        setIsReady(true);
+      }
     });
 
     return () => {

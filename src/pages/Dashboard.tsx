@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Zap, Upload, LogOut, Menu, Sun, Moon, RefreshCw } from 'lucide-react';
+import { Zap, Upload, LogOut, Menu, Sun, Moon, RefreshCw, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useFilters } from '@/lib/filters-context';
@@ -19,6 +19,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/hooks/use-theme';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
+import { AlertTriangle } from 'lucide-react';
 
 const allTabs: { id: DashboardTab; label: string }[] = [
   { id: 'resumo', label: 'Resumo' },
@@ -87,6 +89,70 @@ export default function Dashboard() {
     return <LoadingScreen />;
   }
 
+  // Verifica se o usuário precisa de vinculação
+  const perfil = userInfo?.perfil || 'vendedor';
+  const isSupervisor = perfil === 'supervisor';
+  const isVendedor = perfil === 'vendedor' || perfil === 'consultor';
+  const needsLink = (isSupervisor && !userInfo?.nome_supervisor_vinculado) ||
+                    (isVendedor && !userInfo?.nome_vendedor_vinculado);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  if (needsLink) {
+    return (
+      <div className="min-h-screen bg-surface">
+        {/* Header simplificado */}
+        <header className="bg-card border-b border-border px-3 sm:px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                <Zap className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-lg font-bold text-foreground tracking-tight">TechNET</h1>
+                <p className="text-[10px] text-muted-foreground leading-none">Comercial</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {userInfo && (
+                <div className="hidden sm:flex items-center gap-2 mr-2">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-foreground leading-tight">{userInfo.nome_vinculado}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{userInfo.email}</p>
+                  </div>
+                </div>
+              )}
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground">
+                <LogOut className="h-3.5 w-3.5" />
+                Sair
+              </Button>
+            </div>
+          </div>
+        </header>
+        <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 57px)' }}>
+          <div className="bg-card rounded-xl border border-amber-200 dark:border-amber-800 p-8 sm:p-12 text-center max-w-md mx-4">
+            <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-lg font-bold text-foreground mb-2">Aguardando vinculação</h2>
+            <p className="text-sm text-muted-foreground">
+              {isSupervisor
+                ? 'Seu perfil de supervisor ainda não foi vinculado a uma equipe na base de dados.'
+                : 'Seu perfil de vendedor ainda não foi vinculado ao seu nome na base de dados.'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Solicite ao administrador que faça a vinculação na aba Admin.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface">
       {/* Header */}
@@ -102,6 +168,17 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-2">
+            {userInfo && (
+              <div className="hidden sm:flex items-center gap-2 mr-1">
+                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-medium text-foreground leading-tight">{userInfo.nome_vinculado}</p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{userInfo.email}</p>
+                </div>
+              </div>
+            )}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={isRefreshing}>
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
@@ -115,11 +192,11 @@ export default function Dashboard() {
             <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={() => setImportOpen(true)}>
               <Upload className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="gap-2 text-muted-foreground hidden sm:inline-flex">
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground hidden sm:inline-flex">
               <LogOut className="h-3.5 w-3.5" />
               Sair
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-8 w-8 sm:hidden text-muted-foreground">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 sm:hidden text-muted-foreground">
               <LogOut className="h-3.5 w-3.5" />
             </Button>
           </div>

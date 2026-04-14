@@ -20,12 +20,50 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      setLoading(false);
       toast.error(error.message);
       return;
     }
+
+    // Verificar status de aprovação
+    try {
+      const userId = data.session?.user?.id;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('status_aprovacao, ativo')
+          .eq('id', userId)
+          .single();
+
+        if (!profile || profile.status_aprovacao === 'pendente') {
+          await supabase.auth.signOut();
+          setLoading(false);
+          toast.error('Sua conta ainda não foi aprovada. Entre em contato com um administrador para autorizar seu acesso.');
+          return;
+        }
+
+        if (profile.status_aprovacao === 'rejeitado') {
+          await supabase.auth.signOut();
+          setLoading(false);
+          toast.error('Sua solicitação de cadastro foi rejeitada. Entre em contato com um administrador.');
+          return;
+        }
+
+        if (!profile.ativo) {
+          await supabase.auth.signOut();
+          setLoading(false);
+          toast.error('Sua conta está desativada. Entre em contato com um administrador.');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao verificar aprovação:', err);
+    }
+
+    setLoading(false);
     toast.success('Login realizado com sucesso!');
     navigate('/dashboard');
   };

@@ -31,7 +31,10 @@ export interface ImportedData {
 
 export interface UserInfo {
   perfil: string;
+  nome_vinculado: string;
+  email: string;
   nome_supervisor_vinculado: string | null;
+  nome_vendedor_vinculado: string | null;
 }
 
 interface FiltersContextType {
@@ -69,18 +72,21 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   const compManualRef = useRef(false);
   const hasLoadedRef = useRef(false);
 
-  const loadUserProfile = useCallback(async (userId: string) => {
+  const loadUserProfile = useCallback(async (userId: string, email: string) => {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('perfil, nome_supervisor_vinculado')
+        .select('perfil, nome_vinculado, nome_supervisor_vinculado, nome_vendedor_vinculado')
         .eq('id', userId)
         .single();
 
       if (profile) {
         setUserInfo({
           perfil: profile.perfil || 'vendedor',
-          nome_supervisor_vinculado: profile.nome_supervisor_vinculado || null,
+          nome_vinculado: (profile as any).nome_vinculado || email,
+          email: email,
+          nome_supervisor_vinculado: (profile as any).nome_supervisor_vinculado || null,
+          nome_vendedor_vinculado: (profile as any).nome_vendedor_vinculado || null,
         });
       }
     } catch (err) {
@@ -100,7 +106,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       }
 
       // Carregar perfil do usuário
-      await loadUserProfile(session.user.id);
+      await loadUserProfile(session.user.id, session.user.email || '');
 
       const [dbData, dbMetas] = await Promise.all([
         loadVendasFromDatabase(),
@@ -155,6 +161,8 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
         hasLoadedRef.current = false;
         setImportedData(null);
         setUserInfo(null);
+        setFilters(defaultFilters);
+        setActiveTab('resumo');
         setIsLoadingFromDB(false);
       }
     });

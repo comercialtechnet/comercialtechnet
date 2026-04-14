@@ -117,9 +117,32 @@ export function calcVariation(current: number, previous: number): number | undef
 }
 
 export function useFilteredData() {
-  const { filters, importedData } = useFilters();
+  const { filters, importedData, userInfo } = useFilters();
 
-  const sourceVendas = importedData ? importedData.vendas : [];
+  // Pré-filtrar dados baseado no perfil do usuário
+  const sourceVendas = useMemo(() => {
+    const allVendas = importedData ? importedData.vendas : [];
+    if (!userInfo) return allVendas;
+
+    const perfil = userInfo.perfil;
+
+    // Administradores veem tudo
+    if (perfil === 'administrador') return allVendas;
+
+    // Supervisores veem apenas vendas da sua equipe
+    if (perfil === 'supervisor' && userInfo.nome_supervisor_vinculado) {
+      return allVendas.filter(v => v.supervisor === userInfo.nome_supervisor_vinculado);
+    }
+
+    // Vendedores/Consultores veem apenas suas próprias vendas
+    if ((perfil === 'vendedor' || perfil === 'consultor') && userInfo.nome_vendedor_vinculado) {
+      return allVendas.filter(v => v.vendedor === userInfo.nome_vendedor_vinculado);
+    }
+
+    // Se não tem vínculo, não mostra nada
+    return [];
+  }, [importedData, userInfo]);
+
   const sourceItens = importedData ? importedData.itens : [];
 
   const filteredVendas = useMemo(() => {
