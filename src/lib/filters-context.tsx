@@ -49,6 +49,7 @@ interface FiltersContextType {
   monthlyGoals: Record<string, MonthlyGoal>;
   setMonthlyGoals: React.Dispatch<React.SetStateAction<Record<string, MonthlyGoal>>>;
   isLoadingFromDB: boolean;
+  loadingProgress: { step: string; percent: number };
   reloadFromDatabase: () => Promise<void>;
   userInfo: UserInfo | null;
 }
@@ -60,6 +61,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>('resumo');
   const [importedData, setImportedData] = useState<ImportedData | null>(null);
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState({ step: 'Conectando...', percent: 0 });
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [monthlyGoals, setMonthlyGoals] = useState<Record<string, MonthlyGoal>>(() => {
     try {
@@ -96,22 +98,47 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
 
   const reloadFromDatabase = useCallback(async () => {
     setIsLoadingFromDB(true);
+    setLoadingProgress({ step: 'Conectando...', percent: 5 });
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
         setImportedData(null);
-        return;
+        // NÃO marcar como carregado — esperar o SIGNED_IN
+        return false;
       }
 
-      // Carregar perfil do usuário
-      await loadUserProfile(session.user.id, session.user.email || '');
+      setLoadingProgress({ step: 'Carregando perfil...', percent: 15 });
 
+      // Carregar perfil do usuário primeiro (sequencial para evitar Token Refresh Collision + necessário para o Filtro do Servidor)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('perfil, nome_vinculado, nome_supervisor_vinculado, nome_vendedor_vinculado')
+        .eq('id', session.user.id)
+        .single();
+        
+      const userProfile = profile ? {
+        perfil: profile.perfil || 'vendedor',
+        nome_vinculado: (profile as any).nome_vinculado || session.user.email,
+        email: session.user.email || '',
+        nome_supervisor_vinculado: (profile as any).nome_supervisor_vinculado || null,
+        nome_vendedor_vinculado: (profile as any).nome_vendedor_vinculado || null,
+      } : null;
+
+      if (userProfile) {
+        setUserInfo(userProfile);
+      }
+
+      setLoadingProgress({ step: 'Buscando vendas e metas...', percent: 35 });
+
+      // Agora busca os dados E as metas com Filtro Aplicado direto no Banco de Dados
       const [dbData, dbMetas] = await Promise.all([
-        loadVendasFromDatabase(),
+        loadVendasFromDatabase(userProfile, (step, percent) => setLoadingProgress({ step, percent })),
         loadMetasFromDatabase(),
       ]);
+
+      setLoadingProgress({ step: 'Montando dashboard...', percent: 90 });
 
       if (dbData && dbData.vendas.length > 0) {
         setImportedData({
@@ -142,8 +169,12 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       if (Object.keys(dbMetas).length > 0) {
         setMonthlyGoals(dbMetas);
       }
+
+      setLoadingProgress({ step: 'Pronto!', percent: 100 });
+      return true;
     } catch (err) {
       console.warn('Não foi possível carregar dados do banco:', err);
+      return false;
     } finally {
       setIsLoadingFromDB(false);
     }
@@ -153,6 +184,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Sempre recarregar no SIGNED_IN (sessão pode ter sido restaurada após o primeiro try falhar)
         if (!hasLoadedRef.current) {
           hasLoadedRef.current = true;
           void reloadFromDatabase();
@@ -168,8 +200,9 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     });
 
     // Tentar carregar imediatamente (sessão pode já existir no localStorage)
-    void reloadFromDatabase().then(() => {
-      hasLoadedRef.current = true;
+    void reloadFromDatabase().then((success) => {
+      if (success) hasLoadedRef.current = true;
+      // Se falhou (sem sessão), NÃO marcar — deixar o SIGNED_IN lidar
     });
 
     return () => {
@@ -223,6 +256,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       isUsingImportedData: importedData !== null,
       monthlyGoals, setMonthlyGoals,
       isLoadingFromDB,
+      loadingProgress,
       reloadFromDatabase,
       userInfo,
     }}>

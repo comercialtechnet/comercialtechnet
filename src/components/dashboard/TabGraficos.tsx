@@ -364,7 +364,6 @@ export function TabGraficos() {
                   formatter={(v: number) => `${v} vendas`}
                 />
               </Bar>
-              {hasComparison && <Legend wrapperStyle={{ fontSize: 10 }} formatter={(value: string) => value === 'compVendas' ? compLabel : currentLabel} />}
             </BarChart>
           </ResponsiveContainer>
           {/* Faturamento labels below */}

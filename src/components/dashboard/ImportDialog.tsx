@@ -18,6 +18,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
   const [dragOver, setDragOver] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importProgress, setImportProgress] = useState({ step: '', percent: 0 });
   const [result, setResult] = useState<ParseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,15 +51,18 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
   const handleConfirm = async () => {
     if (!result) return;
     setSaving(true);
+    setImportProgress({ step: 'Iniciando...', percent: 0 });
     try {
       const response = await saveImportToDatabase(
         result.vendas,
         result.itens,
         result.nomeArquivo,
         result.totalLinhas,
-        result.erros.length
+        result.erros.length,
+        (step, percent) => setImportProgress({ step, percent })
       );
 
+      setImportProgress({ step: 'Recarregando dados...', percent: 95 });
       await reloadFromDatabase();
 
       if (response.totalInseridas > 0 && response.totalDuplicadas > 0) {
@@ -86,6 +90,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     }
     resetFilters();
     setSaving(false);
+    setImportProgress({ step: '', percent: 0 });
     onOpenChange(false);
     setResult(null);
   };
@@ -252,6 +257,23 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     )}
                   </Button>
                 </div>
+
+                {saving && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="h-2 bg-border rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-primary rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${importProgress.percent}%` }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground">{importProgress.step}</p>
+                      <p className="text-[10px] text-muted-foreground tabular-nums">{importProgress.percent}%</p>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

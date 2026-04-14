@@ -128,7 +128,7 @@ export function TabResumo() {
             <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 80, left: 5, bottom: 5 }}>
               <XAxis type="number" tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-              <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number, name: string) => [fmt(v), name === 'compFaturamento' ? compLabel : currentLabel]} />
+              <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number, name: string) => [fmt(v), name === 'Período anterior' ? compLabel : currentLabel]} />
               {hasComparison && compStats && (
                 <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3}>
                   {catData.map((entry) => (

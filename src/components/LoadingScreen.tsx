@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
+import { useFilters } from '@/lib/filters-context';
 
 export function LoadingScreen() {
+  const { loadingProgress } = useFilters();
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6">
       {/* WiFi signal animation */}
@@ -49,14 +52,30 @@ export function LoadingScreen() {
           />
         </svg>
       </div>
-      <motion.p
-        className="text-sm text-muted-foreground font-medium"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        Buscando informações na base de dados...
-      </motion.p>
+
+      {/* Progress bar */}
+      <div className="w-64 space-y-2">
+        <div className="h-2 bg-border rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-primary rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${loadingProgress.percent}%` }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <motion.p
+            className="text-xs text-muted-foreground font-medium"
+            key={loadingProgress.step}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {loadingProgress.step}
+          </motion.p>
+          <span className="text-xs text-muted-foreground tabular-nums">{loadingProgress.percent}%</span>
+        </div>
+      </div>
     </div>
   );
 }
