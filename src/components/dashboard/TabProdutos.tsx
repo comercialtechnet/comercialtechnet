@@ -35,6 +35,15 @@ export function TabProdutos() {
 
     filteredItens.forEach(it => {
       const categoria = it.categoria_principal || 'Sem categoria';
+      const nomeProduto = (it.descricao_normalizada || 'NÃO IDENTIFICADO').trim();
+
+      if (nomeProduto === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0) return;
+
+      if (!grouped[categoria]) grouped[categoria] = {};
+      if (!grouped[categoria][nomeProduto]) grouped[categoria][nomeProduto] = { count: 0, fat: 0 };
+
+      grouped[categoria][nomeProduto].count += 1;
+      grouped[categoria][nomeProduto].fat += it.valor_item;
       const nome = (it.descricao_normalizada || 'NÃO IDENTIFICADO').trim();
 
       if (nome === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0) return;
