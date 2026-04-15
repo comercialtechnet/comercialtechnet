@@ -2,6 +2,21 @@ import { useMemo } from 'react';
 import { useFilters } from './filters-context';
 import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
 
+
+function normalizeItem(it: ItemVenda): ItemVenda {
+  const descricao = (it.descricao_normalizada || it.descricao_original || '').toUpperCase();
+
+  if (it.categoria_principal === 'Adicionais' && /SOUND/.test(descricao)) {
+    return {
+      ...it,
+      categoria_principal: 'TV',
+      subcategoria: it.subcategoria === 'Geral' ? 'Soundbox' : it.subcategoria,
+    };
+  }
+
+  return it;
+}
+
 function applyTipoFilter(v: Venda, tipoFiltro: string[]): boolean {
   if (!tipoFiltro || tipoFiltro.length === 0) return true;
   return tipoFiltro.some(filtro => {
@@ -144,7 +159,7 @@ export function useFilteredData() {
     return [];
   }, [importedData, userInfo]);
 
-  const sourceItens = useMemo(() => importedData ? importedData.itens : [], [importedData]);
+  const sourceItens = useMemo(() => (importedData ? importedData.itens : []).map(normalizeItem), [importedData]);
 
   const filteredVendas = useMemo(() => {
     return filterVendas(sourceVendas, sourceItens, filters);
