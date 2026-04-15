@@ -82,43 +82,52 @@ export function TabResumo() {
           compTrend={hasComparison && compStats ? calcVariation(stats.faturamento, compStats.faturamento) : undefined}
         />
         <KPICard
-          title="Vendas"
+          title="Qtd. Vendas"
           value={fmtNum(stats.totalVendas)}
           icon={ShoppingCart}
           compValue={hasComparison && compStats ? fmtNum(compStats.totalVendas) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.totalVendas, compStats.totalVendas) : undefined}
         />
         <KPICard
-          title="Vendas Internet"
+          title="Qtd. Virtua"
           value={fmtNum(stats.vendasInternet)}
           icon={Wifi}
           compValue={hasComparison && compStats ? fmtNum(compStats.vendasInternet) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.vendasInternet, compStats.vendasInternet) : undefined}
         />
         <KPICard
-          title="Combos"
+          title="Combos Vendidos"
           value={fmtNum(stats.totalCombos)}
-          subtitle={`${stats.percCombos.toFixed(1)}% das vendas`}
           icon={Layers}
           compValue={hasComparison && compStats ? fmtNum(compStats.totalCombos) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.totalCombos, compStats.totalCombos) : undefined}
         />
         <KPICard
-          title="Ticket Médio"
+          title="Faturamento por Venda (Média)"
           value={fmt(stats.ticketMedio)}
           icon={Receipt}
           compValue={hasComparison && compStats ? fmt(compStats.ticketMedio) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.ticketMedio, compStats.ticketMedio) : undefined}
         />
         <KPICard
-          title="Produtos"
+          title="Qtd. Produtos"
           value={fmtNum(stats.totalProdutos)}
           icon={Package}
           compValue={hasComparison && compStats ? fmtNum(compStats.totalProdutos) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.totalProdutos, compStats.totalProdutos) : undefined}
         />
-        <KPICard title="Vend. Ativos" value={String(stats.vendedoresAtivos)} icon={Users} />
-        <KPICard title="Sup. Ativos" value={String(stats.supervisoresAtivos)} icon={UserCheck} />
+        <KPICard title="Vendedores Ativos"
+          value={String(stats.vendedoresAtivos)}
+          icon={Users}
+          compValue={hasComparison && compStats ? fmtNum(compStats.vendedoresAtivos) : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.vendedoresAtivos, compStats.vendedoresAtivos) : undefined}
+        />
+        <KPICard title="Supervisores Ativos"
+          value={String(stats.supervisoresAtivos)}
+          icon={UserCheck}
+          compValue={hasComparison && compStats ? fmtNum(compStats.supervisoresAtivos) : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.supervisoresAtivos, compStats.supervisoresAtivos) : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">

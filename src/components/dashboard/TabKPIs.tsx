@@ -28,29 +28,54 @@ export function TabKPIs() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-        <KPICard title="Faturamento Total" value={fmt(stats.faturamento)} icon={DollarSign}
+        <KPICard title="Faturamento Total"
+          value={fmt(stats.faturamento)}
+          icon={DollarSign}
           compValue={hasComparison && compStats ? fmt(compStats.faturamento) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.faturamento, compStats.faturamento) : undefined}
         />
-        <KPICard title="Vendas Totais" value={fmtNum(stats.totalVendas)} icon={ShoppingCart}
+        <KPICard title="Vendas Totais"
+          value={fmtNum(stats.totalVendas)}
+          icon={ShoppingCart}
           compValue={hasComparison && compStats ? fmtNum(compStats.totalVendas) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.totalVendas, compStats.totalVendas) : undefined}
         />
-        <KPICard title="Vendas Internet" value={fmtNum(stats.vendasInternet)} icon={Wifi}
+        <KPICard title="Qtd. Virtua"
+          value={fmtNum(stats.vendasInternet)}
+          icon={Wifi}
           compValue={hasComparison && compStats ? fmtNum(compStats.vendasInternet) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.vendasInternet, compStats.vendasInternet) : undefined}
         />
-        <KPICard title="Combos Totais" value={fmtNum(stats.totalCombos)} icon={Layers}
+        <KPICard title="Combos Totais"
+          value={fmtNum(stats.totalCombos)}
+          icon={Layers}
           compValue={hasComparison && compStats ? fmtNum(compStats.totalCombos) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.totalCombos, compStats.totalCombos) : undefined}
         />
-        <KPICard title="Ticket Médio" value={fmt(stats.ticketMedio)} icon={Receipt}
+        <KPICard title="Faturamento por Venda (Média)"
+          value={fmt(stats.ticketMedio)}
+          icon={Receipt}
           compValue={hasComparison && compStats ? fmt(compStats.ticketMedio) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.ticketMedio, compStats.ticketMedio) : undefined}
         />
-        <KPICard title="Fat. Médio/Vend." value={fmt(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0)} icon={TrendingUp} />
-        <KPICard title="Média Prod./Venda" value={stats.mediaProdutos.toFixed(1)} icon={BarChart3} />
-        <KPICard title="% Combos" value={`${stats.percCombos.toFixed(1)}%`} icon={Layers} />
+        <KPICard title="Fat. Médio/Vendedor"
+          value={fmt(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0)}
+          icon={TrendingUp}
+          compValue={hasComparison && compStats ? fmt(compStats.vendedoresAtivos > 0 ? compStats.faturamento / compStats.vendedoresAtivos : 0) : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0, compStats.vendedoresAtivos > 0 ? compStats.faturamento / compStats.vendedoresAtivos : 0) : undefined}
+        />
+        <KPICard title="DCC"
+          value={stats.mediaProdutos.toFixed(1)}
+          icon={BarChart3}
+          compValue={hasComparison && compStats ? fmt(compStats.mediaProdutos) : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.mediaProdutos, compStats.mediaProdutos) : undefined}
+        />
+        <KPICard title="% Combos"
+          value={`${stats.percCombos.toFixed(1)}%`}
+          icon={Layers}
+          compValue={hasComparison && compStats ? `${compStats.percCombos.toFixed(1)}%` : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.percCombos, compStats.percCombos) : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
