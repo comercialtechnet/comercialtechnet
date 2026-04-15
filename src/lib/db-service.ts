@@ -12,8 +12,8 @@ async function fetchAll<T>(
   } = {},
   onProgress?: (loaded: number, total: number) => void
 ): Promise<T[]> {
-  const PAGE_SIZE = 1000;
-  
+  const PAGE_SIZE = 5000;
+
   // Constrói a base da query para contar e buscar
   const buildQueryBase = () => {
     let q = (supabase.from as any)(table);
@@ -29,7 +29,7 @@ async function fetchAll<T>(
   // 1. Pega o Count total primeiro
   const { count, error: countError } = await buildQueryBase().select('*', { count: 'exact', head: true });
   if (countError) throw new Error(`Erro ao contar ${table}: ${countError.message}`);
-  
+
   if (!count || count === 0) return [];
 
   // 2. Prepara todas as páginas
@@ -164,7 +164,7 @@ export async function saveImportToDatabase(
     const batch = novasVendas.slice(i, i + BATCH_SIZE);
     const batchPercent = Math.round(20 + (i / novasVendas.length) * 70);
     onProgress?.(`Enviando vendas... (${Math.min(i + BATCH_SIZE, novasVendas.length)}/${novasVendas.length})`, batchPercent);
-    
+
     const vendasToInsert = batch.map(v => ({
       importacao_id: importacaoId,
       empresa_venda: v.empresa_venda || null,
