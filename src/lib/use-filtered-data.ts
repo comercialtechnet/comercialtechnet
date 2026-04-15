@@ -144,7 +144,7 @@ export function useFilteredData() {
     return [];
   }, [importedData, userInfo]);
 
-  const sourceItens = importedData ? importedData.itens : [];
+  const sourceItens = useMemo(() => importedData ? importedData.itens : [], [importedData]);
 
   const filteredVendas = useMemo(() => {
     return filterVendas(sourceVendas, sourceItens, filters);

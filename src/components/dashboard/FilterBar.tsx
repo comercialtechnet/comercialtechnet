@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useFilters } from '@/lib/filters-context';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export function FilterBar() {
 
   const sourceVendas = importedData ? importedData.vendas : mockVendas;
 
-  const getAvailableOptions = (ignoreKey: string, extractor: (v: typeof sourceVendas[0]) => string) => {
+  const getAvailableOptions = useCallback((ignoreKey: string, extractor: (v: typeof sourceVendas[0]) => string) => {
     let list = sourceVendas;
     if (ignoreKey !== 'vendedor' && filters.vendedor.length > 0) {
       list = list.filter(v => filters.vendedor.includes(v.vendedor));
@@ -30,12 +30,12 @@ export function FilterBar() {
     }
     const set = new Set(list.map(extractor).filter(Boolean));
     return Array.from(set).sort();
-  };
+  }, [sourceVendas, filters.vendedor, filters.supervisor, filters.empresa, filters.tipoVenda]);
 
-  const vendedores = useMemo(() => getAvailableOptions('vendedor', v => v.vendedor), [sourceVendas, filters.supervisor, filters.empresa, filters.tipoVenda]);
-  const empresas = useMemo(() => getAvailableOptions('empresa', v => String(v.empresa_venda)), [sourceVendas, filters.vendedor, filters.supervisor, filters.tipoVenda]);
-  const supervisores = useMemo(() => getAvailableOptions('supervisor', v => v.supervisor), [sourceVendas, filters.vendedor, filters.empresa, filters.tipoVenda]);
-  const tiposVenda = useMemo(() => getAvailableOptions('tipoVenda', v => v.tipo_venda), [sourceVendas, filters.vendedor, filters.supervisor, filters.empresa]);
+  const vendedores = useMemo(() => getAvailableOptions('vendedor', v => v.vendedor), [getAvailableOptions]);
+  const empresas = useMemo(() => getAvailableOptions('empresa', v => String(v.empresa_venda)), [getAvailableOptions]);
+  const supervisores = useMemo(() => getAvailableOptions('supervisor', v => v.supervisor), [getAvailableOptions]);
+  const tiposVenda = useMemo(() => getAvailableOptions('tipoVenda', v => v.tipo_venda), [getAvailableOptions]);
 
   const tipoOptions = useMemo(() => {
     const opts: string[] = [];

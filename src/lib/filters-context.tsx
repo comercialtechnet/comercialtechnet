@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { DashboardFilters, DashboardTab, Venda, ItemVenda, MonthlyGoal } from './types';
 import { getDefaultComparisonDates, INITIAL_MONTHLY_GOALS } from './monthly-goals';
@@ -80,29 +81,6 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   });
   const compManualRef = useRef(false);
   const hasLoadedRef = useRef(false);
-
-  const loadUserProfile = useCallback(async (userId: string, email: string) => {
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('perfil, nome_vinculado, nome_supervisor_vinculado, nome_vendedor_vinculado')
-        .eq('id', userId)
-        .single();
-
-      const typedProfile = profile as ProfileWithBindings | null;
-      if (typedProfile) {
-        setUserInfo({
-          perfil: typedProfile.perfil || 'vendedor',
-          nome_vinculado: typedProfile.nome_vinculado || email,
-          email: email,
-          nome_supervisor_vinculado: typedProfile.nome_supervisor_vinculado || null,
-          nome_vendedor_vinculado: typedProfile.nome_vendedor_vinculado || null,
-        });
-      }
-    } catch (err) {
-      console.warn('Erro ao carregar perfil do usuário:', err);
-    }
-  }, []);
 
   const reloadFromDatabase = useCallback(async () => {
     setIsLoadingFromDB(true);
@@ -187,7 +165,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoadingFromDB(false);
     }
-  }, [loadUserProfile]);
+  }, []);
 
   // Esperar sessão estar pronta antes de carregar dados
   useEffect(() => {
