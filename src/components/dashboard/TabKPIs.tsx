@@ -1,7 +1,7 @@
 import { useFilteredData, calcVariation } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
 import { KPICard } from './KPICard';
-import { DollarSign, ShoppingCart, Package, Layers, Receipt, TrendingUp, BarChart3, Target, Wifi } from 'lucide-react';
+import { DollarSign, ShoppingCart, Layers, Receipt, TrendingUp, BarChart3, Target, Wifi } from 'lucide-react';
 import { getMonthlyGoalFromStore } from '@/lib/monthly-goals';
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -58,6 +58,15 @@ export function TabKPIs() {
           compValue={hasComparison && compStats ? fmt(compStats.ticketMedio) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.ticketMedio, compStats.ticketMedio) : undefined}
         />
+        <KPICard title="Fat. Médio/Vend." value={fmt(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0)} icon={TrendingUp} />
+        <KPICard
+          title="DCC"
+          value={fmtNum(stats.totalDebitoConta)}
+          icon={BarChart3}
+          compValue={hasComparison && compStats ? fmtNum(compStats.totalDebitoConta) : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.totalDebitoConta, compStats.totalDebitoConta) : undefined}
+        />
+        <KPICard title="% Combos" value={`${stats.percCombos.toFixed(1)}%`} icon={Layers} />
         <KPICard title="Fat. Médio/Vendedor"
           value={fmt(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0)}
           icon={TrendingUp}
