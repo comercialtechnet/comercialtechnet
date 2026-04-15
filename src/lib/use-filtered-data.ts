@@ -8,6 +8,8 @@ function normalizeItem(it: ItemVenda): ItemVenda {
   const categoria = (it.categoria_principal || '').trim().toUpperCase();
 
   if (categoria === 'ADICIONAIS' && /SOUND|SOUND\s*BOX|SOUNDBOX/.test(descricao)) {
+
+  if (it.categoria_principal === 'Adicionais' && /SOUND/.test(descricao)) {
     return {
       ...it,
       categoria_principal: 'TV',
