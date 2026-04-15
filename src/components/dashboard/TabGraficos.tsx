@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useFilteredData } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
+import { Venda } from '@/lib/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
 
 const COLORS = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
@@ -75,7 +76,7 @@ export function TabGraficos() {
   const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
 
   // Daily data - use day index (1,2,3...) so lines overlap properly
-  const dailyByIndex = (vendas: any[]) => {
+  const dailyByIndex = (vendas: Venda[]) => {
     const byDate: Record<string, { faturamento: number; vendas: number; combos: number }> = {};
     vendas.forEach(v => {
       const d = v.data_instalacao;

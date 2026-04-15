@@ -1,5 +1,10 @@
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 import { Venda, ItemVenda, MonthlyGoal } from './types';
+import type { UserInfo } from './filters-context';
+
+type QueryFilter = { column: string; op: 'in' | 'eq'; value: unknown };
+type RawRow = Record<string, unknown>;
+type RawVendaWithItens = RawRow & { itens_venda?: RawRow[] };
 
 // ─── Helper: fetch all rows bypassing 1000-row limit ───
 
@@ -8,7 +13,7 @@ async function fetchAll<T>(
   query: {
     select?: string;
     order?: { column: string; ascending: boolean };
-    filters?: Array<{ column: string; op: string; value: any }>;
+    filters?: QueryFilter[];
   } = {},
   onProgress?: (loaded: number, total: number) => void
 ): Promise<T[]> {
@@ -16,7 +21,7 @@ async function fetchAll<T>(
 
   // Constrói a base da query para contar e buscar
   const buildQueryBase = () => {
-    let q = (supabase.from as any)(table);
+    let q = supabase.from(table as 'vendas' | 'itens_venda' | 'importacoes' | 'metas_mensais' | 'profiles' | 'user_roles');
     if (query.filters) {
       for (const f of query.filters) {
         if (f.op === 'in') q = q.in(f.column, f.value);
@@ -216,12 +221,22 @@ export async function saveImportToDatabase(
 
     // Map id_venda -> UUID for itens linking
     const vendaIdMap = new Map<string, string>();
-    (insertedVendas || []).forEach((iv: any) => {
+    (insertedVendas || []).forEach((iv: { id_venda: string; id: string }) => {
       vendaIdMap.set(iv.id_venda, iv.id);
     });
 
     // Collect itens for this batch
-    const batchItens: any[] = [];
+    const batchItens: Array<{
+      venda_id: string;
+      ordem_item: number;
+      descricao_original: string | null;
+      descricao_normalizada: string | null;
+      valor_item: number;
+      categoria_principal: string | null;
+      subcategoria: string | null;
+      grupo_combo: string | null;
+      flags_json: Record<string, boolean>;
+    }> = [];
     for (const v of batch) {
       const vendaUuid = vendaIdMap.get(v.id_venda);
       if (!vendaUuid) continue;
@@ -274,12 +289,12 @@ export async function saveImportToDatabase(
 
 // ─── Carregar dados do banco ───
 
-export async function loadVendasFromDatabase(profile?: any, onProgress?: (step: string, percent: number) => void): Promise<{ vendas: Venda[]; itens: ItemVenda[] } | null> {
+export async function loadVendasFromDatabase(profile?: UserInfo | null, onProgress?: (step: string, percent: number) => void): Promise<{ vendas: Venda[]; itens: ItemVenda[] } | null> {
   // Otimização: Select aninhado (Native Join no Supabase) - traz as vendas e seus itens em apenas 1 requisição
   const vendasSelect = 'id,importacao_id,empresa_venda,id_venda,proposta,contrato,id_cliente,cliente,tipo_cliente,id_vendedor,vendedor,vendedor_normalizado,valor_total,tipo_pacote,tipo_venda,data_instalacao,forma_pagamento,com_tv_original,produtos_brutos,supervisor,supervisor_normalizado,quantidade_itens,e_combo,combo_tipo,possui_internet,possui_tv,possui_movel,possui_telefone,possui_mesh,possui_ponto_extra,possui_mudanca_tecnologia,possui_adicionais,chave_deduplicacao,criado_em, itens_venda ( id, venda_id, ordem_item, descricao_original, descricao_normalizada, valor_item, categoria_principal, subcategoria, grupo_combo, flags_json )';
 
   // Aplicação da Filtragem no Banco (Server-side)
-  const filters: any[] = [];
+  const filters: QueryFilter[] = [];
   if (profile?.perfil === 'supervisor' && profile?.nome_supervisor_vinculado) {
     filters.push({ column: 'supervisor', op: 'eq', value: profile.nome_supervisor_vinculado });
   } else if ((profile?.perfil === 'vendedor' || profile?.perfil === 'consultor') && profile?.nome_vendedor_vinculado) {
@@ -288,7 +303,7 @@ export async function loadVendasFromDatabase(profile?: any, onProgress?: (step: 
 
   onProgress?.('Buscando vendas...', 35);
 
-  const vendasRaw = await fetchAll<any>('vendas', {
+  const vendasRaw = await fetchAll<RawVendaWithItens>('vendas', {
     select: vendasSelect,
     order: { column: 'data_instalacao', ascending: false },
     filters
@@ -299,63 +314,63 @@ export async function loadVendasFromDatabase(profile?: any, onProgress?: (step: 
 
   if (!vendasRaw || vendasRaw.length === 0) return null;
 
-  let allItens: any[] = [];
+  const allItens: RawRow[] = [];
 
   const vendas: Venda[] = vendasRaw.map(v => {
     // Array nativo provido pelo select do PostgREST
     if (v.itens_venda && Array.isArray(v.itens_venda)) {
-      v.itens_venda.forEach((it: any) => allItens.push(it));
+      v.itens_venda.forEach((it: RawRow) => allItens.push(it));
     }
 
     return {
-      id: v.id,
-      importacao_id: v.importacao_id,
-      empresa_venda: v.empresa_venda || '',
-      id_venda: v.id_venda,
-      proposta: v.proposta || '',
-      contrato: v.contrato || '',
-      id_cliente: v.id_cliente || '',
-      cliente: v.cliente || '',
-      tipo_cliente: v.tipo_cliente || '',
-      id_vendedor: v.id_vendedor || '',
-      vendedor: v.vendedor || '',
-      vendedor_normalizado: v.vendedor_normalizado || '',
-      valor_total: Number(v.valor_total) || 0,
-      tipo_pacote: v.tipo_pacote || '',
-      tipo_venda: v.tipo_venda || '',
-      data_instalacao: v.data_instalacao || '',
-      forma_pagamento: v.forma_pagamento || '',
-      com_tv_original: v.com_tv_original || '',
-      produtos_brutos: v.produtos_brutos || '',
-      supervisor: v.supervisor || '',
-      supervisor_normalizado: v.supervisor_normalizado || '',
-      quantidade_itens: v.quantidade_itens || 0,
-      e_combo: v.e_combo || false,
-      combo_tipo: v.combo_tipo || '',
-      possui_internet: v.possui_internet || false,
-      possui_tv: v.possui_tv || false,
-      possui_movel: v.possui_movel || false,
-      possui_telefone: v.possui_telefone || false,
-      possui_mesh: v.possui_mesh || false,
-      possui_ponto_extra: v.possui_ponto_extra || false,
-      possui_mudanca_tecnologia: v.possui_mudanca_tecnologia || false,
-      possui_adicionais: v.possui_adicionais || false,
-      chave_deduplicacao: v.chave_deduplicacao || '',
-      data_ultima_importacao: v.criado_em || '',
+      id: String(v.id ?? ''),
+      importacao_id: String(v.importacao_id ?? ''),
+      empresa_venda: String(v.empresa_venda ?? ''),
+      id_venda: String(v.id_venda ?? ''),
+      proposta: String(v.proposta ?? ''),
+      contrato: String(v.contrato ?? ''),
+      id_cliente: String(v.id_cliente ?? ''),
+      cliente: String(v.cliente ?? ''),
+      tipo_cliente: String(v.tipo_cliente ?? ''),
+      id_vendedor: String(v.id_vendedor ?? ''),
+      vendedor: String(v.vendedor ?? ''),
+      vendedor_normalizado: String(v.vendedor_normalizado ?? ''),
+      valor_total: Number(v.valor_total ?? 0) || 0,
+      tipo_pacote: String(v.tipo_pacote ?? ''),
+      tipo_venda: String(v.tipo_venda ?? ''),
+      data_instalacao: String(v.data_instalacao ?? ''),
+      forma_pagamento: String(v.forma_pagamento ?? ''),
+      com_tv_original: String(v.com_tv_original ?? ''),
+      produtos_brutos: String(v.produtos_brutos ?? ''),
+      supervisor: String(v.supervisor ?? ''),
+      supervisor_normalizado: String(v.supervisor_normalizado ?? ''),
+      quantidade_itens: Number(v.quantidade_itens ?? 0) || 0,
+      e_combo: Boolean(v.e_combo),
+      combo_tipo: String(v.combo_tipo ?? ''),
+      possui_internet: Boolean(v.possui_internet),
+      possui_tv: Boolean(v.possui_tv),
+      possui_movel: Boolean(v.possui_movel),
+      possui_telefone: Boolean(v.possui_telefone),
+      possui_mesh: Boolean(v.possui_mesh),
+      possui_ponto_extra: Boolean(v.possui_ponto_extra),
+      possui_mudanca_tecnologia: Boolean(v.possui_mudanca_tecnologia),
+      possui_adicionais: Boolean(v.possui_adicionais),
+      chave_deduplicacao: String(v.chave_deduplicacao ?? ''),
+      data_ultima_importacao: String(v.criado_em ?? ''),
     };
   });
 
   const itens: ItemVenda[] = allItens.map(it => ({
-    id: it.id,
-    venda_id: it.venda_id,
-    ordem_item: it.ordem_item || 0,
-    descricao_original: it.descricao_original || '',
-    descricao_normalizada: it.descricao_normalizada || '',
-    valor_item: Number(it.valor_item) || 0,
-    categoria_principal: it.categoria_principal || '',
-    subcategoria: it.subcategoria || '',
-    grupo_combo: it.grupo_combo || '',
-    flags_json: it.flags_json || {},
+    id: String(it.id ?? ''),
+    venda_id: String(it.venda_id ?? ''),
+    ordem_item: Number(it.ordem_item ?? 0) || 0,
+    descricao_original: String(it.descricao_original ?? ''),
+    descricao_normalizada: String(it.descricao_normalizada ?? ''),
+    valor_item: Number(it.valor_item ?? 0) || 0,
+    categoria_principal: String(it.categoria_principal ?? ''),
+    subcategoria: String(it.subcategoria ?? ''),
+    grupo_combo: String(it.grupo_combo ?? ''),
+    flags_json: (it.flags_json as Record<string, boolean> | undefined) || {},
   }));
 
   return { vendas, itens };
@@ -371,7 +386,7 @@ export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoa
   if (error || !data) return {};
 
   const goals: Record<string, MonthlyGoal> = {};
-  data.forEach((row: any) => {
+  data.forEach((row: { periodo_ano: number | null; periodo_mes: number | null; meta_faturamento: number | null; meta_total_vendas: number | null; meta_vendas_virtua: number | null }) => {
     if (row.periodo_ano && row.periodo_mes) {
       const key = `${row.periodo_ano}-${String(row.periodo_mes).padStart(2, '0')}`;
       goals[key] = {

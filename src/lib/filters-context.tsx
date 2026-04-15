@@ -4,6 +4,13 @@ import { getDefaultComparisonDates, INITIAL_MONTHLY_GOALS } from './monthly-goal
 import { loadVendasFromDatabase, loadMetasFromDatabase } from './db-service';
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 
+type ProfileWithBindings = {
+  perfil: string | null;
+  nome_vinculado?: string | null;
+  nome_supervisor_vinculado?: string | null;
+  nome_vendedor_vinculado?: string | null;
+};
+
 const defaultFilters: DashboardFilters = {
   dataInicio: '',
   dataFim: '',
@@ -82,13 +89,14 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
 
-      if (profile) {
+      const typedProfile = profile as ProfileWithBindings | null;
+      if (typedProfile) {
         setUserInfo({
-          perfil: profile.perfil || 'vendedor',
-          nome_vinculado: (profile as any).nome_vinculado || email,
+          perfil: typedProfile.perfil || 'vendedor',
+          nome_vinculado: typedProfile.nome_vinculado || email,
           email: email,
-          nome_supervisor_vinculado: (profile as any).nome_supervisor_vinculado || null,
-          nome_vendedor_vinculado: (profile as any).nome_vendedor_vinculado || null,
+          nome_supervisor_vinculado: typedProfile.nome_supervisor_vinculado || null,
+          nome_vendedor_vinculado: typedProfile.nome_vendedor_vinculado || null,
         });
       }
     } catch (err) {
@@ -118,12 +126,13 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
         .eq('id', session.user.id)
         .single();
         
-      const userProfile = profile ? {
-        perfil: profile.perfil || 'vendedor',
-        nome_vinculado: (profile as any).nome_vinculado || session.user.email,
+      const typedProfile = profile as ProfileWithBindings | null;
+      const userProfile = typedProfile ? {
+        perfil: typedProfile.perfil || 'vendedor',
+        nome_vinculado: typedProfile.nome_vinculado || session.user.email,
         email: session.user.email || '',
-        nome_supervisor_vinculado: (profile as any).nome_supervisor_vinculado || null,
-        nome_vendedor_vinculado: (profile as any).nome_vendedor_vinculado || null,
+        nome_supervisor_vinculado: typedProfile.nome_supervisor_vinculado || null,
+        nome_vendedor_vinculado: typedProfile.nome_vendedor_vinculado || null,
       } : null;
 
       if (userProfile) {

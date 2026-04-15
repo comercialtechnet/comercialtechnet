@@ -10,6 +10,7 @@ import { formatMonthKey, generateMonthKey } from '@/lib/monthly-goals';
 import { saveMetasToDatabase, deleteMetaFromDatabase } from '@/lib/db-service';
 import { MonthlyGoal } from '@/lib/types';
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
+import { Database } from '@/integrations/supabase/types';
 import { NumericFormat } from "react-number-format";
 
 
@@ -24,6 +25,17 @@ interface ProfileUser {
   nome_supervisor_vinculado: string | null;
   nome_vendedor_vinculado: string | null;
 }
+type AppRole = Database['public']['Enums']['app_role'];
+type ProfileWithBindings = {
+  id: string;
+  nome_vinculado: string;
+  nome_normalizado: string;
+  perfil: AppRole;
+  status_aprovacao: string;
+  ativo: boolean;
+  nome_supervisor_vinculado?: string | null;
+  nome_vendedor_vinculado?: string | null;
+};
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -80,7 +92,7 @@ export function TabAdmin() {
         return;
       }
 
-      const mapped: ProfileUser[] = (profiles || []).map((p: any) => ({
+      const mapped: ProfileUser[] = ((profiles || []) as ProfileWithBindings[]).map((p) => ({
         id: p.id,
         nome_vinculado: p.nome_vinculado,
         nome_normalizado: p.nome_normalizado,
@@ -179,14 +191,14 @@ export function TabAdmin() {
 
   const approveUser = async (id: string) => {
     // Usar o cargo que o admin pode ter alterado, ou o original
-    const finalRole = pendingRoles[id] || users.find(u => u.id === id)?.perfil || 'vendedor';
+    const finalRole = (pendingRoles[id] || users.find(u => u.id === id)?.perfil || 'vendedor') as AppRole;
 
     const { error } = await supabase
       .from('profiles')
       .update({
         status_aprovacao: 'aprovado' as const,
         ativo: true,
-        perfil: finalRole as any,
+        perfil: finalRole,
         aprovado_em: new Date().toISOString(),
       })
       .eq('id', id);
@@ -197,7 +209,7 @@ export function TabAdmin() {
     }
 
     await supabase.from('user_roles').delete().eq('user_id', id);
-    await supabase.from('user_roles').insert({ user_id: id, role: finalRole as any });
+    await supabase.from('user_roles').insert({ user_id: id, role: finalRole });
 
     // Limpar pendingRoles para esse user
     setPendingRoles(prev => {
@@ -240,10 +252,10 @@ export function TabAdmin() {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ativo: !u.ativo } : u));
   };
 
-  const changeRole = async (userId: string, newRole: string) => {
+  const changeRole = async (userId: string, newRole: AppRole) => {
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ perfil: newRole as any })
+      .update({ perfil: newRole })
       .eq('id', userId);
 
     if (profileError) {
@@ -252,10 +264,10 @@ export function TabAdmin() {
     }
 
     await supabase.from('user_roles').delete().eq('user_id', userId);
-    await supabase.from('user_roles').insert({ user_id: userId, role: newRole as any });
+    await supabase.from('user_roles').insert({ user_id: userId, role: newRole });
 
     // Limpar vínculos que não se aplicam ao novo perfil
-    const updates: any = {};
+    const updates: { nome_supervisor_vinculado?: null; nome_vendedor_vinculado?: null } = {};
     if (newRole !== 'supervisor') {
       updates.nome_supervisor_vinculado = null;
     }
@@ -301,7 +313,7 @@ export function TabAdmin() {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ nome_vendedor_vinculado: value } as any)
+      .update({ nome_vendedor_vinculado: value })
       .eq('id', userId);
 
     if (error) {
@@ -572,7 +584,7 @@ export function TabAdmin() {
                       }`}>{u.status_aprovacao}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <Select value={u.perfil} onValueChange={v => changeRole(u.id, v)}>
+                    <Select value={u.perfil} onValueChange={v => changeRole(u.id, v as AppRole)}>
                       <SelectTrigger className="h-7 text-xs w-36">
                         <SelectValue />
                       </SelectTrigger>
@@ -659,7 +671,7 @@ export function TabAdmin() {
                         </div>
                       </td>
                       <td>
-                        <Select value={u.perfil} onValueChange={v => changeRole(u.id, v)}>
+                        <Select value={u.perfil} onValueChange={v => changeRole(u.id, v as AppRole)}>
                           <SelectTrigger className="h-7 text-xs w-36">
                             <SelectValue />
                           </SelectTrigger>
