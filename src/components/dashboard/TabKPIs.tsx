@@ -58,26 +58,18 @@ export function TabKPIs() {
           compValue={hasComparison && compStats ? fmt(compStats.ticketMedio) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.ticketMedio, compStats.ticketMedio) : undefined}
         />
-        <KPICard title="Fat. Médio/Vend." value={fmt(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0)} icon={TrendingUp} />
-        <KPICard
-          title="DCC"
-          value={fmtNum(stats.totalDebitoConta)}
-          icon={BarChart3}
-          compValue={hasComparison && compStats ? fmtNum(compStats.totalDebitoConta) : undefined}
-          compTrend={hasComparison && compStats ? calcVariation(stats.totalDebitoConta, compStats.totalDebitoConta) : undefined}
-        />
-        <KPICard title="% Combos" value={`${stats.percCombos.toFixed(1)}%`} icon={Layers} />
         <KPICard title="Fat. Médio/Vendedor"
           value={fmt(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0)}
           icon={TrendingUp}
           compValue={hasComparison && compStats ? fmt(compStats.vendedoresAtivos > 0 ? compStats.faturamento / compStats.vendedoresAtivos : 0) : undefined}
           compTrend={hasComparison && compStats ? calcVariation(stats.vendedoresAtivos > 0 ? stats.faturamento / stats.vendedoresAtivos : 0, compStats.vendedoresAtivos > 0 ? compStats.faturamento / compStats.vendedoresAtivos : 0) : undefined}
         />
-        <KPICard title="DCC"
-          value={stats.mediaProdutos.toFixed(1)}
+        <KPICard
+          title="DCC"
+          value={fmtNum(stats.totalDebitoConta)}
           icon={BarChart3}
-          compValue={hasComparison && compStats ? fmt(compStats.mediaProdutos) : undefined}
-          compTrend={hasComparison && compStats ? calcVariation(stats.mediaProdutos, compStats.mediaProdutos) : undefined}
+          compValue={hasComparison && compStats ? fmtNum(compStats.totalDebitoConta) : undefined}
+          compTrend={hasComparison && compStats ? calcVariation(stats.totalDebitoConta, compStats.totalDebitoConta) : undefined}
         />
         <KPICard title="% Combos"
           value={`${stats.percCombos.toFixed(1)}%`}

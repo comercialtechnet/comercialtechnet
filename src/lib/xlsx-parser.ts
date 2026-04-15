@@ -28,7 +28,7 @@ function classifyProduct(name: string): { categoria_principal: string; subcatego
   if (/VIRTUA|SOLAR|BANDA\s*LARGA/i.test(n)) {
     return { categoria_principal: 'Internet', subcategoria: /EMP/i.test(n) ? 'Empresarial' : 'Residencial' };
   }
-  if (/\bTV\b|CANAIS|HBO|TELECINE|PREMIERE|SOUND/i.test(n) && !/PONTO/i.test(n)) {
+  if (/TV\b|SOUND/i.test(n)) {
     return { categoria_principal: 'TV', subcategoria: /SOUND/i.test(n) ? 'Soundbox' : /4K/i.test(n) ? 'TV 4K' : /BOX/i.test(n) ? 'TV Box' : 'TV Principal' };
   }
   if (/CHIP|MÓVEL|MOVEL|CELULAR/i.test(n) && !/DEPEND/i.test(n)) {
@@ -37,7 +37,7 @@ function classifyProduct(name: string): { categoria_principal: string; subcatego
   if (/DEPEND.*M[OÓ]VEL|M[OÓ]VEL.*DEPEND/i.test(n)) {
     return { categoria_principal: 'Móvel', subcategoria: 'Dependente' };
   }
-  if (/FONE|VOIP|TELEFONE/i.test(n) && !/M[OÓ]VEL/i.test(n)) {
+  if (/FONE|VOIP|TELEFONE/i.test(n)) {
     return { categoria_principal: 'Telefone / VOIP', subcategoria: 'Residencial' };
   }
   if (/WIFI.*MESH|MESH/i.test(n)) {
@@ -48,9 +48,6 @@ function classifyProduct(name: string): { categoria_principal: string; subcatego
   }
   if (/MUDAN[CÇ]A.*TECNOL|MIGRA[CÇ][AÃ]O/i.test(n)) {
     return { categoria_principal: 'Mudança de Tecnologia', subcategoria: 'Mudança de Tecnologia' };
-  }
-  if (/CANAL|OPCIONAL/i.test(n)) {
-    return { categoria_principal: 'TV', subcategoria: 'Canais Opcionais' };
   }
   if (/PONTO.*ULTRA/i.test(n)) {
     return { categoria_principal: 'Adicionais', subcategoria: 'Ponto Ultra' };
@@ -171,32 +168,32 @@ function parseAnaliticoSheet(rows: Record<string, unknown>[], erros: string[]): 
 
       const vendaItens: ItemVenda[] = produtos.length > 0
         ? produtos.map((p, pi) => {
-            const { categoria_principal, subcategoria } = classifyProduct(p.descricao);
-            return {
-              id: `imp-item-${idx}-${pi}`,
-              venda_id: idVenda,
-              ordem_item: pi + 1,
-              descricao_original: `${p.descricao}${p.valor ? ` - R$${p.valor.toFixed(2).replace('.', ',')}` : ''}`,
-              descricao_normalizada: p.descricao.toUpperCase(),
-              valor_item: p.valor,
-              categoria_principal,
-              subcategoria,
-              grupo_combo: '',
-              flags_json: {},
-            };
-          })
-        : [{
-            id: `imp-item-${idx}-0`,
+          const { categoria_principal, subcategoria } = classifyProduct(p.descricao);
+          return {
+            id: `imp-item-${idx}-${pi}`,
             venda_id: idVenda,
-            ordem_item: 1,
-            descricao_original: produtosBrutos || 'Produto não identificado',
-            descricao_normalizada: (produtosBrutos || 'PRODUTO NÃO IDENTIFICADO').toUpperCase(),
-            valor_item: valorTotal,
-            categoria_principal: 'Adicionais',
-            subcategoria: 'Geral',
+            ordem_item: pi + 1,
+            descricao_original: `${p.descricao}${p.valor ? ` - R$${p.valor.toFixed(2).replace('.', ',')}` : ''}`,
+            descricao_normalizada: p.descricao.toUpperCase(),
+            valor_item: p.valor,
+            categoria_principal,
+            subcategoria,
             grupo_combo: '',
             flags_json: {},
-          }];
+          };
+        })
+        : [{
+          id: `imp-item-${idx}-0`,
+          venda_id: idVenda,
+          ordem_item: 1,
+          descricao_original: produtosBrutos || 'Produto não identificado',
+          descricao_normalizada: (produtosBrutos || 'PRODUTO NÃO IDENTIFICADO').toUpperCase(),
+          valor_item: valorTotal,
+          categoria_principal: 'Adicionais',
+          subcategoria: 'Geral',
+          grupo_combo: '',
+          flags_json: {},
+        }];
 
       const categorias = [...new Set(vendaItens.map(it => it.categoria_principal))];
       const eCombo = vendaItens.length > 1;
@@ -282,7 +279,7 @@ export function parseXLSX(file: File): Promise<ParseResult> {
 
           const ws = wb.Sheets[sheetName];
           const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, dateNF: 'yyyy-mm-dd' });
-          
+
           sheetsInfo.push({ name: sheetName, rows: rows.length });
 
           if (rows.length === 0) continue;
@@ -290,7 +287,7 @@ export function parseXLSX(file: File): Promise<ParseResult> {
           const headers = Object.keys(rows[0]).map(h => normalizeHeader(h));
 
           const isAnalitico = headers.some(h => h.includes('idvenda') || h.includes('proposta')) &&
-                              headers.some(h => h.includes('produto') || h.includes('vendedor'));
+            headers.some(h => h.includes('produto') || h.includes('vendedor'));
 
           if (isAnalitico) {
             const rawRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
