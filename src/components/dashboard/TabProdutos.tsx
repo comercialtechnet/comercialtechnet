@@ -30,6 +30,30 @@ const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 export function TabProdutos() {
   const { stats, filteredItens, compStats, hasComparison } = useFilteredData();
 
+  const detalhesPorCategoria = (() => {
+    const grouped: Record<string, Record<string, { count: number; fat: number }>> = {};
+
+    filteredItens.forEach(it => {
+      const categoria = it.categoria_principal || 'Sem categoria';
+      const nome = it.descricao_normalizada || 'NÃO IDENTIFICADO';
+
+      if (!grouped[categoria]) grouped[categoria] = {};
+      if (!grouped[categoria][nome]) grouped[categoria][nome] = { count: 0, fat: 0 };
+
+      grouped[categoria][nome].count += 1;
+      grouped[categoria][nome].fat += it.valor_item;
+    });
+
+    return Object.fromEntries(
+      Object.entries(grouped).map(([categoria, itens]) => [
+        categoria,
+        Object.entries(itens)
+          .sort((a, b) => b[1].count - a[1].count)
+          .slice(0, 30),
+      ]),
+    );
+  })();
+
   const catData = Object.entries(stats.porCategoria)
     .sort((a, b) => b[1].quantidade - a[1].quantidade)
     .map(([name, data]) => {
@@ -38,6 +62,7 @@ export function TabProdutos() {
         name,
         ...data,
         compQuantidade: compCat?.quantidade || 0,
+        detalhes: detalhesPorCategoria[name] || [],
       };
     });
 
@@ -63,7 +88,7 @@ export function TabProdutos() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
         {catData.map(cat => (
-          <div key={cat.name} className="bg-card rounded-lg border border-border p-3 sm:p-4">
+          <div key={cat.name} className="relative group bg-card rounded-lg border border-border p-3 sm:p-4">
             <div className="flex items-center gap-2 mb-2">
               <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cat.name] || '#94a3b8' }} />
               <span className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">{cat.name}</span>
@@ -71,6 +96,22 @@ export function TabProdutos() {
             <p className="text-base sm:text-lg font-bold text-foreground tabular-nums">{cat.quantidade}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground tabular-nums">{fmt(cat.faturamento)}</p>
             <p className="text-[10px] sm:text-xs text-primary tabular-nums">{totalFat > 0 ? ((cat.faturamento / totalFat) * 100).toFixed(1) : 0}%</p>
+
+            {cat.detalhes.length > 0 && (
+              <div className="pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity absolute left-0 right-0 top-full mt-1 z-20">
+                <div className="bg-popover text-popover-foreground border border-border rounded-md shadow-lg p-2">
+                  <p className="text-[10px] sm:text-xs font-semibold mb-2">Tipos de produtos em {cat.name}</p>
+                  <div className="max-h-44 overflow-y-auto pr-1 space-y-1">
+                    {cat.detalhes.map(([nome, data]) => (
+                      <div key={`${cat.name}-${nome}`} className="flex items-center justify-between gap-2 text-[10px] sm:text-xs">
+                        <span className="truncate">{nome}</span>
+                        <span className="text-muted-foreground tabular-nums shrink-0">{data.count} • {fmt(data.fat)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
