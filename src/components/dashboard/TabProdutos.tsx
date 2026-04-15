@@ -35,6 +35,9 @@ export function TabProdutos() {
 
     filteredItens.forEach(it => {
       const categoria = it.categoria_principal || 'Sem categoria';
+      const nome = (it.descricao_normalizada || 'NÃO IDENTIFICADO').trim();
+
+      if (nome === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0) return;
       const nome = it.descricao_normalizada || 'NÃO IDENTIFICADO';
 
       if (!grouped[categoria]) grouped[categoria] = {};
