@@ -8,8 +8,6 @@ function normalizeItem(it: ItemVenda): ItemVenda {
   const categoria = (it.categoria_principal || '').trim().toUpperCase();
 
   if (categoria === 'ADICIONAIS' && /SOUND|SOUND\s*BOX|SOUNDBOX/.test(descricao)) {
-
-  if (it.categoria_principal === 'Adicionais' && /SOUND/.test(descricao)) {
     return {
       ...it,
       categoria_principal: 'TV',
@@ -18,6 +16,11 @@ function normalizeItem(it: ItemVenda): ItemVenda {
   }
 
   return it;
+}
+
+function isIgnorableItem(it: ItemVenda): boolean {
+  const nomeProduto = (it.descricao_normalizada || it.descricao_original || '').trim().toUpperCase();
+  return nomeProduto === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0;
 }
 
 function applyTipoFilter(v: Venda, tipoFiltro: string[]): boolean {
@@ -162,7 +165,10 @@ export function useFilteredData() {
     return [];
   }, [importedData, userInfo]);
 
-  const sourceItens = useMemo(() => (importedData ? importedData.itens : []).map(normalizeItem), [importedData]);
+  const sourceItens = useMemo(
+    () => (importedData ? importedData.itens : []).map(normalizeItem).filter(it => !isIgnorableItem(it)),
+    [importedData]
+  );
 
   const filteredVendas = useMemo(() => {
     return filterVendas(sourceVendas, sourceItens, filters);

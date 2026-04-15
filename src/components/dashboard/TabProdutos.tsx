@@ -44,16 +44,6 @@ export function TabProdutos() {
 
       grouped[categoria][nomeProduto].count += 1;
       grouped[categoria][nomeProduto].fat += it.valor_item;
-      const nome = (it.descricao_normalizada || 'NÃO IDENTIFICADO').trim();
-
-      if (nome === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0) return;
-      const nome = it.descricao_normalizada || 'NÃO IDENTIFICADO';
-
-      if (!grouped[categoria]) grouped[categoria] = {};
-      if (!grouped[categoria][nome]) grouped[categoria][nome] = { count: 0, fat: 0 };
-
-      grouped[categoria][nome].count += 1;
-      grouped[categoria][nome].fat += it.valor_item;
     });
 
     return Object.fromEntries(
@@ -81,6 +71,7 @@ export function TabProdutos() {
   const topProdutos = (() => {
     const map: Record<string, { count: number; fat: number }> = {};
     filteredItens.forEach(it => {
+      if ((it.descricao_normalizada || '').trim().toUpperCase() === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0) return;
       const key = it.descricao_normalizada;
       if (!map[key]) map[key] = { count: 0, fat: 0 };
       map[key].count++;
@@ -95,6 +86,7 @@ export function TabProdutos() {
     filteredItens
       .filter(it => it.categoria_principal === 'Adicionais')
       .forEach(it => {
+        if ((it.descricao_normalizada || '').trim().toUpperCase() === 'PRODUTO NÃO IDENTIFICADO' && it.valor_item === 0) return;
         const key = it.descricao_normalizada || 'NÃO IDENTIFICADO';
         if (!map[key]) map[key] = { count: 0, fat: 0 };
         map[key].count += 1;
