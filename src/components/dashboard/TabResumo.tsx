@@ -37,7 +37,7 @@ const fmtNum = (n: number) => n.toLocaleString('pt-BR');
 export function TabResumo() {
   const { stats, compStats, hasComparison } = useFilteredData();
   const { filters } = useFilters();
-  const [activeComboName, setActiveComboName] = useState<string | null>(null);
+  const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null);
 
   const currentLabel = formatPeriodLabel(filters.dataInicio) || 'Atual';
   const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
@@ -54,16 +54,16 @@ export function TabResumo() {
       };
     });
 
-  const comboData = Object.entries(stats.porComboTipo)
-    .sort((a, b) => b[1] - a[1])
+  const topCategoryData = Object.entries(stats.porCategoria)
+    .sort((a, b) => b[1].quantidade - a[1].quantidade)
     .slice(0, 5)
-    .map(([name, value]) => ({ name, value }));
+    .map(([name, data]) => ({ name, value: data.quantidade }));
 
-  const compComboData = compStats
-    ? Object.entries(compStats.porComboTipo)
-      .sort((a, b) => b[1] - a[1])
+  const compTopCategoryData = compStats
+    ? Object.entries(compStats.porCategoria)
+      .sort((a, b) => b[1].quantidade - a[1].quantidade)
       .slice(0, 5)
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, data]) => ({ name, value: data.quantidade }))
     : [];
 
   return (
@@ -147,30 +147,30 @@ export function TabResumo() {
         </div>
 
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Top Combinações de Combo</h3>
-          <div className={hasComparison && compComboData.length > 0 ? 'grid grid-cols-2 gap-2' : ''}>
+          <h3 className="text-sm font-semibold text-foreground mb-4">Top Categorias (Quantidade)</h3>
+          <div className={hasComparison && compTopCategoryData.length > 0 ? 'grid grid-cols-2 gap-2' : ''}>
             <div>
-              {hasComparison && compComboData.length > 0 && (
+              {hasComparison && compTopCategoryData.length > 0 && (
                 <p className="text-[10px] font-medium text-center text-primary mb-1">Atual</p>
               )}
               <ResponsiveContainer width="100%" height={hasComparison ? 180 : 200}>
                 <PieChart>
                   <Pie
-                    data={comboData}
+                    data={topCategoryData}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
                     outerRadius={hasComparison ? 55 : 70}
                     innerRadius={hasComparison ? 25 : 30}
-                    onClick={(data) => setActiveComboName(prev => prev === data.name ? null : data.name)}
+                    onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
                   >
-                    {comboData.map((d, i) => (
+                    {topCategoryData.map((d, i) => (
                       <Cell
                         key={i}
-                        fill={COLORS_LIST[i % COLORS_LIST.length]}
+                        fill={CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length]}
                         style={{ outline: 'none', cursor: 'pointer' }}
-                        opacity={activeComboName === null || activeComboName === d.name ? 1 : 0.3}
+                        opacity={activeCategoryName === null || activeCategoryName === d.name ? 1 : 0.3}
                       />
                     ))}
                   </Pie>
@@ -178,17 +178,17 @@ export function TabResumo() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
-                {comboData.map((d, i) => {
-                  const total = comboData.reduce((s, x) => s + x.value, 0);
+                {topCategoryData.map((d, i) => {
+                  const total = topCategoryData.reduce((s, x) => s + x.value, 0);
                   const perc = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0';
                   return (
                     <div
                       key={d.name}
                       className="flex items-center gap-1.5 text-[10px] cursor-pointer transition-opacity"
-                      onClick={() => setActiveComboName(prev => prev === d.name ? null : d.name)}
-                      style={{ opacity: activeComboName === null || activeComboName === d.name ? 1 : 0.3 }}
+                      onClick={() => setActiveCategoryName(prev => prev === d.name ? null : d.name)}
+                      style={{ opacity: activeCategoryName === null || activeCategoryName === d.name ? 1 : 0.3 }}
                     >
-                      <span className="inline-block h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: COLORS_LIST[i % COLORS_LIST.length] }} />
+                      <span className="inline-block h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length] }} />
                       <span className="text-foreground">{d.name}</span>
                       <span className="text-muted-foreground tabular-nums">{d.value} ({perc}%)</span>
                     </div>
@@ -196,27 +196,27 @@ export function TabResumo() {
                 })}
               </div>
             </div>
-            {hasComparison && compComboData.length > 0 && (
+            {hasComparison && compTopCategoryData.length > 0 && (
               <div>
                 <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">Anterior</p>
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie
-                      data={compComboData}
+                      data={compTopCategoryData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
                       outerRadius={55}
                       innerRadius={25}
-                      onClick={(data) => setActiveComboName(prev => prev === data.name ? null : data.name)}
+                      onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
                     >
-                      {compComboData.map((d, i) => (
+                      {compTopCategoryData.map((d, i) => (
                         <Cell
                           key={i}
-                          fill={COLORS_LIST[i % COLORS_LIST.length]}
+                          fill={CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length]}
                           style={{ outline: 'none', cursor: 'pointer' }}
-                          opacity={activeComboName === null || activeComboName === d.name ? 0.6 : 0.2}
+                          opacity={activeCategoryName === null || activeCategoryName === d.name ? 0.6 : 0.2}
                         />
                       ))}
                     </Pie>
@@ -224,17 +224,17 @@ export function TabResumo() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
-                  {compComboData.map((d, i) => {
-                    const total = compComboData.reduce((s, x) => s + x.value, 0);
+                  {compTopCategoryData.map((d, i) => {
+                    const total = compTopCategoryData.reduce((s, x) => s + x.value, 0);
                     const perc = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0';
                     return (
                       <div
                         key={d.name}
                         className="flex items-center gap-1.5 text-[10px] cursor-pointer transition-opacity"
-                        onClick={() => setActiveComboName(prev => prev === d.name ? null : d.name)}
-                        style={{ opacity: activeComboName === null || activeComboName === d.name ? 1 : 0.3 }}
+                        onClick={() => setActiveCategoryName(prev => prev === d.name ? null : d.name)}
+                        style={{ opacity: activeCategoryName === null || activeCategoryName === d.name ? 1 : 0.3 }}
                       >
-                        <span className="inline-block h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: COLORS_LIST[i % COLORS_LIST.length] }} />
+                        <span className="inline-block h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length] }} />
                         <span className="text-foreground">{d.name}</span>
                         <span className="text-muted-foreground tabular-nums">{d.value} ({perc}%)</span>
                       </div>

@@ -64,6 +64,7 @@ function computeStats(vendas: Venda[], itens: ItemVenda[]): DashboardStats {
   const faturamento = vendas.reduce((sum, v) => sum + v.valor_total, 0);
   const totalVendas = vendas.length;
   const totalProdutos = filteredItens.length;
+  const totalDebitoConta = vendas.filter((v) => /(?:d[ée]bito|dcc)/i.test(v.forma_pagamento)).length;
   const totalCombos = vendas.filter(v => v.e_combo).length;
   const ticketMedio = totalVendas > 0 ? faturamento / totalVendas : 0;
   const mediaProdutos = totalVendas > 0 ? totalProdutos / totalVendas : 0;
@@ -104,7 +105,7 @@ function computeStats(vendas: Venda[], itens: ItemVenda[]): DashboardStats {
   });
 
   return {
-    faturamento, totalVendas, totalProdutos, totalCombos,
+    faturamento, totalVendas, totalProdutos, totalDebitoConta, totalCombos,
     ticketMedio, mediaProdutos, percCombos,
     vendedoresAtivos, supervisoresAtivos, vendasInternet,
     porCategoria, porVendedor, porSupervisor, porComboTipo,

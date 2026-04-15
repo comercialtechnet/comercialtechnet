@@ -101,6 +101,7 @@ export interface DashboardStats {
   faturamento: number;
   totalVendas: number;
   totalProdutos: number;
+  totalDebitoConta: number;
   totalCombos: number;
   ticketMedio: number;
   mediaProdutos: number;
