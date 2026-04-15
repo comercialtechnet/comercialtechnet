@@ -71,7 +71,7 @@ function generateVendas(): { vendas: Venda[]; itens: ItemVenda[] } {
       let subcat = 'Geral';
 
       if (/VIRTUA|SOLAR/i.test(nome)) { cat = 'Internet'; subcat = /EMP/i.test(nome) ? 'Empresarial' : 'Residencial'; }
-      else if (/TV|CANAIS/i.test(nome)) { cat = 'TV'; subcat = /4K/i.test(nome) ? 'TV 4K' : /BOX/i.test(nome) ? 'TV Box' : 'TV Principal'; }
+      else if (/TV|CANAIS|SOUND/i.test(nome)) { cat = 'TV'; subcat = /4K/i.test(nome) ? 'TV 4K' : /BOX/i.test(nome) ? 'TV Box' : 'TV Principal'; }
       else if (/CHIP|MÓVEL/i.test(nome)) { cat = 'Móvel'; subcat = /CONT/i.test(nome) ? 'Controle' : /POS/i.test(nome) ? 'Pós' : 'Dependente'; }
       else if (/FONE|VOIP|TELEFONE/i.test(nome)) { cat = 'Telefone / VOIP'; subcat = 'Residencial'; }
       else if (/WIFI MESH/i.test(nome)) { cat = 'WiFi Mesh'; subcat = 'WiFi Mesh'; }
