@@ -52,6 +52,23 @@ export function TabProdutos() {
     return Object.entries(map).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
   })();
 
+
+  const adicionaisDetalhes = (() => {
+    const map: Record<string, { count: number; fat: number }> = {};
+    filteredItens
+      .filter(it => it.categoria_principal === 'Adicionais')
+      .forEach(it => {
+        const key = it.descricao_normalizada || 'NÃO IDENTIFICADO';
+        if (!map[key]) map[key] = { count: 0, fat: 0 };
+        map[key].count += 1;
+        map[key].fat += it.valor_item;
+      });
+
+    return Object.entries(map)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8);
+  })();
+
   const totalFat = Object.values(stats.porCategoria).reduce((s, c) => s + c.faturamento, 0);
 
   return (
@@ -120,6 +137,26 @@ export function TabProdutos() {
             ))}
           </div>
         </div>
+
+      {adicionaisDetalhes.length > 0 && (
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-1">O que entrou como Adicionais</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Itens sem regra específica de classificação aparecem aqui para facilitar auditoria.
+          </p>
+          <div className="space-y-2">
+            {adicionaisDetalhes.map(([name, data]) => (
+              <div key={name} className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+                <span className="font-medium text-foreground truncate">{name}</span>
+                <span className="text-muted-foreground tabular-nums shrink-0">
+                  {data.count} • {fmt(data.fat)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       </div>
     </div>
   );
