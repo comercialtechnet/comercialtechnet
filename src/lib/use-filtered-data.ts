@@ -5,6 +5,9 @@ import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
 
 function normalizeItem(it: ItemVenda): ItemVenda {
   const descricao = (it.descricao_normalizada || it.descricao_original || '').toUpperCase();
+  const categoria = (it.categoria_principal || '').trim().toUpperCase();
+
+  if (categoria === 'ADICIONAIS' && /SOUND|SOUND\s*BOX|SOUNDBOX/.test(descricao)) {
 
   if (it.categoria_principal === 'Adicionais' && /SOUND/.test(descricao)) {
     return {

@@ -98,6 +98,7 @@ export function TabProdutos() {
   })();
 
   const totalFat = Object.values(stats.porCategoria).reduce((s, c) => s + c.faturamento, 0);
+  const topProdutosMaxCount = topProdutos[0]?.[1].count ?? 1;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -170,7 +171,7 @@ export function TabProdutos() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] sm:text-xs font-medium text-foreground truncate">{name}</p>
                   <div className="ranking-bar mt-1">
-                    <div className="ranking-bar-fill" style={{ width: `${(data.count / topProdutos[0][1].count) * 100}%` }} />
+                    <div className="ranking-bar-fill" style={{ width: `${(data.count / topProdutosMaxCount) * 100}%` }} />
                   </div>
                 </div>
                 <div className="text-right shrink-0">
