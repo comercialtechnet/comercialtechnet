@@ -4,14 +4,29 @@ import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
 
 
 export function cleanString(s: string): string {
-  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  return (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function isValidYMD(y: number, m: number, d: number): boolean {
+  if (y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+function buildDateKey(y: number, m: number, d: number): number {
+  return y * 10000 + m * 100 + d;
 }
 
 export function toDateKey(raw: string | number | Date | null | undefined): number | null {
   if (raw === null || raw === undefined || raw === '') return null;
   if (raw instanceof Date) {
     if (isNaN(raw.getTime())) return null;
-    return raw.getFullYear() * 10000 + (raw.getMonth() + 1) * 100 + raw.getDate();
+    return buildDateKey(raw.getFullYear(), raw.getMonth() + 1, raw.getDate());
   }
 
   if (typeof raw === 'number') {
@@ -20,7 +35,7 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
       const base = Date.UTC(1899, 11, 30);
       const ms = base + Math.floor(raw) * 86400000;
       const d = new Date(ms);
-      return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+      return buildDateKey(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
     }
     return null;
   }
@@ -34,9 +49,7 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
     const y = Number(iso[1]);
     const m = Number(iso[2]);
     const d = Number(iso[3]);
-    if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-      return y * 10000 + m * 100 + d;
-    }
+    if (isValidYMD(y, m, d)) return buildDateKey(y, m, d);
   }
 
   // DD/MM/YYYY
@@ -45,15 +58,31 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
     const d = Number(br[1]);
     const m = Number(br[2]);
     const y = Number(br[3]);
-    if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-      return y * 10000 + m * 100 + d;
-    }
+    if (isValidYMD(y, m, d)) return buildDateKey(y, m, d);
+  }
+
+  // DD-MM-YYYY
+  const brDash = value.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (brDash) {
+    const d = Number(brDash[1]);
+    const m = Number(brDash[2]);
+    const y = Number(brDash[3]);
+    if (isValidYMD(y, m, d)) return buildDateKey(y, m, d);
+  }
+
+  // YYYY/MM/DD
+  const isoSlash = value.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (isoSlash) {
+    const y = Number(isoSlash[1]);
+    const m = Number(isoSlash[2]);
+    const d = Number(isoSlash[3]);
+    if (isValidYMD(y, m, d)) return buildDateKey(y, m, d);
   }
 
   // Fallback para strings parseáveis pelo JS (ex.: "2026-04-18 00:00:00")
   const parsed = new Date(value);
   if (!isNaN(parsed.getTime())) {
-    return parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
+    return buildDateKey(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
   }
 
   return null;
@@ -97,7 +126,7 @@ function applyTipoFilter(v: Venda, tipoFiltro: string[]): boolean {
   });
 }
 
-function filterVendas(
+export function filterVendas(
   vendas: Venda[],
   itens: ItemVenda[],
   filters: DashboardFilters,
