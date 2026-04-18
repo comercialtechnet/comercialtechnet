@@ -21,11 +21,12 @@ async function fetchAll<T>(
 
   // Constrói a base da query para contar e buscar
   const buildQueryBase = () => {
-    let q = supabase.from(table as 'vendas' | 'itens_venda' | 'importacoes' | 'metas_mensais' | 'profiles' | 'user_roles');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from(table as 'vendas' | 'itens_venda' | 'importacoes' | 'metas_mensais' | 'profiles' | 'user_roles');
     if (query.filters) {
       for (const f of query.filters) {
-        if (f.op === 'in') q = q.in(f.column, f.value);
-        else if (f.op === 'eq') q = q.eq(f.column, f.value);
+        if (f.op === 'in') q = q.in(f.column, f.value as string[]);
+        else if (f.op === 'eq') q = q.eq(f.column, f.value as string);
       }
     }
     return q;

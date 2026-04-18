@@ -57,9 +57,24 @@ function filterVendas(
   return vendas.filter((v: Venda) => {
     if (dInicio && v.data_instalacao < dInicio) return false;
     if (dFim && v.data_instalacao > dFim) return false;
-    if (filters.vendedor.length > 0 && !filters.vendedor.some(f => cleanString(f) === cleanString(v.vendedor_normalizado))) return false;
-    if (filters.supervisor.length > 0 && !filters.supervisor.some(f => cleanString(f) === cleanString(v.supervisor_normalizado))) return false;
-    if (filters.empresa.length > 0 && !filters.empresa.includes(String(v.empresa_venda).toUpperCase())) return false;
+    // Vendedor: comparar com ambos os campos (normalizado pode estar vazio)
+    if (filters.vendedor.length > 0) {
+      const hasMatch = filters.vendedor.some(f => {
+        const fClean = cleanString(f);
+        return fClean === cleanString(v.vendedor) || fClean === cleanString(v.vendedor_normalizado);
+      });
+      if (!hasMatch) return false;
+    }
+    // Supervisor: comparar com ambos os campos
+    if (filters.supervisor.length > 0) {
+      const hasMatch = filters.supervisor.some(f => {
+        const fClean = cleanString(f);
+        return fClean === cleanString(v.supervisor) || fClean === cleanString(v.supervisor_normalizado);
+      });
+      if (!hasMatch) return false;
+    }
+    // Empresa: normalizar comparação
+    if (filters.empresa.length > 0 && !filters.empresa.some(f => cleanString(f) === cleanString(String(v.empresa_venda)))) return false;
     if (filters.categoriaPrincipal) {
       // Use venda UUID (id) for matching itens
       const vendaItens = itens.filter(it => it.venda_id === v.id);

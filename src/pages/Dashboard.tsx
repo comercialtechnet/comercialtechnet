@@ -187,13 +187,17 @@ export default function Dashboard() {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button variant="outline" size="sm" className="gap-2 hidden sm:inline-flex" onClick={() => setImportOpen(true)}>
-              <Upload className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">Importar XLSX</span>
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={() => setImportOpen(true)}>
-              <Upload className="h-3.5 w-3.5" />
-            </Button>
+            {userInfo?.perfil === 'administrador' && (
+              <>
+                <Button variant="outline" size="sm" className="gap-2 hidden sm:inline-flex" onClick={() => setImportOpen(true)}>
+                  <Upload className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Importar XLSX</span>
+                </Button>
+                <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={() => setImportOpen(true)}>
+                  <Upload className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground hidden sm:inline-flex">
               <LogOut className="h-3.5 w-3.5" />
               Sair
