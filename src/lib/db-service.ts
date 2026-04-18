@@ -113,18 +113,11 @@ export async function saveImportToDatabase(
   const uniqueKeys = [...new Set(vendas.map(v => v.chave_deduplicacao).filter(Boolean))];
   onProgress?.('Verificando duplicidades...', 10);
   const existingKeys = await loadExistingDedupKeys(uniqueKeys);
-  const novasVendas = vendas.filter(v => !v.chave_deduplicacao || !existingKeys.has(v.chave_deduplicacao));
-  let duplicateCount = vendas.length - novasVendas.length;
+  const duplicateCount = vendas.filter(v => v.chave_deduplicacao && existingKeys.has(v.chave_deduplicacao)).length;
+  const novasVendasCount = vendas.length - duplicateCount;
 
-  if (novasVendas.length === 0) {
-    console.log('[Import] Arquivo sem vendas novas; todas as chaves já existem no banco.');
-    return {
-      importacaoId: null,
-      totalInseridas: 0,
-      totalDuplicadas: duplicateCount,
-      totalErros,
-    };
-  }
+  const getItemJoinKey = (venda: Pick<Venda, 'chave_deduplicacao' | 'id_venda'>) =>
+    venda.chave_deduplicacao?.trim() || venda.id_venda.trim();
 
   const getItemJoinKey = (venda: Pick<Venda, 'chave_deduplicacao' | 'id_venda'>) =>
     venda.chave_deduplicacao?.trim() || venda.id_venda.trim();
@@ -149,7 +142,7 @@ export async function saveImportToDatabase(
       nome_arquivo: nomeArquivo,
       importado_por: user.id,
       total_linhas: totalLinhas,
-      total_inseridas: novasVendas.length,
+      total_inseridas: novasVendasCount,
       total_substituidas: duplicateCount,
       total_erros: totalErros,
     })
@@ -166,13 +159,15 @@ export async function saveImportToDatabase(
 
   // 2. Insert vendas in batches
   let processedCount = 0;
+  let updatedCount = 0;
+  let insertedCount = 0;
   const errors: string[] = [];
   const BATCH_SIZE = 50;
 
-  for (let i = 0; i < novasVendas.length; i += BATCH_SIZE) {
-    const batch = novasVendas.slice(i, i + BATCH_SIZE);
-    const batchPercent = Math.round(20 + (i / novasVendas.length) * 70);
-    onProgress?.(`Enviando vendas... (${Math.min(i + BATCH_SIZE, novasVendas.length)}/${novasVendas.length})`, batchPercent);
+  for (let i = 0; i < vendas.length; i += BATCH_SIZE) {
+    const batch = vendas.slice(i, i + BATCH_SIZE);
+    const batchPercent = Math.round(20 + (i / vendas.length) * 70);
+    onProgress?.(`Enviando vendas... (${Math.min(i + BATCH_SIZE, vendas.length)}/${vendas.length})`, batchPercent);
 
     const vendasToInsert = batch.map(v => ({
       importacao_id: importacaoId,
@@ -213,7 +208,6 @@ export async function saveImportToDatabase(
       .from('vendas')
       .upsert(vendasToInsert, {
         onConflict: 'chave_deduplicacao',
-        ignoreDuplicates: true,
       })
       .select('id, id_venda, chave_deduplicacao');
 
@@ -263,6 +257,19 @@ export async function saveImportToDatabase(
       }
     }
 
+    const upsertedIds = (insertedVendas || []).map(v => v.id).filter(Boolean);
+    if (upsertedIds.length > 0) {
+      const { error: deleteItensErr } = await supabase
+        .from('itens_venda')
+        .delete()
+        .in('venda_id', upsertedIds);
+
+      if (deleteItensErr) {
+        console.error(`[Import] Erro ao limpar itens antigos batch ${i}:`, deleteItensErr);
+        errors.push(`Delete itens batch ${i}: ${deleteItensErr.message}`);
+      }
+    }
+
     if (batchItens.length > 0) {
       const { error: itensErr } = await supabase
         .from('itens_venda')
@@ -274,9 +281,12 @@ export async function saveImportToDatabase(
       }
     }
 
+    const batchUpdated = batch.filter(v => v.chave_deduplicacao && existingKeys.has(v.chave_deduplicacao)).length;
+    const batchInserted = batch.length - batchUpdated;
     processedCount += insertedVendas?.length || 0;
-    duplicateCount += batch.length - (insertedVendas?.length || 0);
-    console.log(`[Import] Processado ${processedCount}/${novasVendas.length} vendas novas`);
+    updatedCount += batchUpdated;
+    insertedCount += batchInserted;
+    console.log(`[Import] Processado ${processedCount}/${vendas.length} vendas`);
   }
 
   if (errors.length > 0) {
@@ -287,8 +297,11 @@ export async function saveImportToDatabase(
   onProgress?.('Importação concluída!', 100);
   return {
     importacaoId,
-    totalInseridas: processedCount,
+    totalInseridas: insertedCount,
     totalDuplicadas: duplicateCount,
+    totalAtualizadas: updatedCount,
+    totalNovas: insertedCount,
+    totalProcessadas: processedCount,
     totalErros: totalErros + errors.length,
   };
 }
