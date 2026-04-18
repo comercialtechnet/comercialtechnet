@@ -12,9 +12,44 @@ type ProfileWithBindings = {
   nome_vendedor_vinculado?: string | null;
 };
 
-const defaultFilters: DashboardFilters = {
-  dataInicio: '',
-  dataFim: '',
+function getCurrentMonthDateRange() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  const toInputDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  return { dataInicio: toInputDate(start), dataFim: toInputDate(end) };
+}
+
+function buildDefaultFilters(): DashboardFilters {
+  const { dataInicio, dataFim } = getCurrentMonthDateRange();
+  return {
+    dataInicio,
+    dataFim,
+    vendedor: [],
+    supervisor: [],
+    categoriaPrincipal: '',
+    subcategoria: '',
+    tipoVenda: [],
+    tipoCliente: '',
+    formaPagamento: '',
+    tipoFiltro: [],
+    empresa: [],
+    busca: '',
+    compDataInicio: '',
+    compDataFim: '',
+  };
+}
+
+const defaultFilters: DashboardFilters = buildDefaultFilters();
+
+const emptyFiltersBase: Omit<DashboardFilters, 'dataInicio' | 'dataFim'> = {
   vendedor: [],
   supervisor: [],
   categoriaPrincipal: '',
@@ -64,40 +99,8 @@ interface FiltersContextType {
 
 const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
 
-function normalizeDateForInput(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const value = String(raw).trim();
-  if (!value) return null;
-
-  const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) {
-    const y = iso[1];
-    const m = iso[2].padStart(2, '0');
-    const d = iso[3].padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  const br = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (br) {
-    const d = br[1].padStart(2, '0');
-    const m = br[2].padStart(2, '0');
-    const y = br[3];
-    return `${y}-${m}-${d}`;
-  }
-
-  const parsed = new Date(value);
-  if (!isNaN(parsed.getTime())) {
-    const y = parsed.getFullYear();
-    const m = String(parsed.getMonth() + 1).padStart(2, '0');
-    const d = String(parsed.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  return null;
-}
-
 export function FiltersProvider({ children }: { children: ReactNode }) {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = useState<DashboardFilters>(() => buildDefaultFilters());
   const [activeTab, setActiveTab] = useState<DashboardTab>('resumo');
   const [importedData, setImportedData] = useState<ImportedData | null>(null);
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true);
@@ -168,21 +171,17 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
           erros: [],
         });
 
-        const dates = dbData.vendas
-          .map(v => normalizeDateForInput(v.data_instalacao))
-          .filter((d): d is string => Boolean(d))
-          .sort();
-        const now = new Date();
-        const latestDate = dates.length > 0 ? dates[dates.length - 1] : now.toISOString().slice(0, 10);
-        const earliestDate = dates.length > 0 ? dates[0] : latestDate;
+        const { dataInicio, dataFim } = getCurrentMonthDateRange();
 
         setFilters(prev => ({
           ...prev,
-          dataInicio: earliestDate,
-          dataFim: latestDate,
+          dataInicio,
+          dataFim,
         }));
       } else {
         setImportedData(null);
+        const { dataInicio, dataFim } = getCurrentMonthDateRange();
+        setFilters(prev => ({ ...prev, ...emptyFiltersBase, dataInicio, dataFim }));
       }
 
       if (Object.keys(dbMetas).length > 0) {
@@ -214,7 +213,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
         hasLoadedRef.current = false;
         setImportedData(null);
         setUserInfo(null);
-        setFilters(defaultFilters);
+        setFilters(buildDefaultFilters());
         setActiveTab('resumo');
         setIsLoadingFromDB(false);
       }
@@ -253,7 +252,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
 
   const resetFilters = () => {
     compManualRef.current = false;
-    setFilters(defaultFilters);
+    setFilters(buildDefaultFilters());
   };
 
   const wrappedSetFilters: React.Dispatch<React.SetStateAction<DashboardFilters>> = (action) => {
