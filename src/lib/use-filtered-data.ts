@@ -8,7 +8,7 @@ export function cleanString(s: string): string {
 }
 
 export function toDateKey(raw: string | number | Date | null | undefined): number | null {
-  if (!raw) return null;
+  if (raw === null || raw === undefined || raw === '') return null;
   if (raw instanceof Date) {
     if (isNaN(raw.getTime())) return null;
     return raw.getFullYear() * 10000 + (raw.getMonth() + 1) * 100 + raw.getDate();
@@ -25,8 +25,6 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
     return null;
   }
 
-function toDateKey(raw: string | null | undefined): number | null {
-  if (!raw) return null;
   const value = String(raw).trim();
   if (!value) return null;
 
@@ -112,8 +110,6 @@ function filterVendas(
   if (inicioKey !== null && fimKey !== null && inicioKey > fimKey) {
     [inicioKey, fimKey] = [fimKey, inicioKey];
   }
-  const inicioKey = toDateKey(dInicio);
-  const fimKey = toDateKey(dFim);
 
   return vendas.filter((v: Venda) => {
     const vendaDateKey = toDateKey(v.data_instalacao);
