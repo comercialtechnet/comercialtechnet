@@ -7,6 +7,24 @@ export function cleanString(s: string): string {
   return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 }
 
+export function toDateKey(raw: string | number | Date | null | undefined): number | null {
+  if (!raw) return null;
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null;
+    return raw.getFullYear() * 10000 + (raw.getMonth() + 1) * 100 + raw.getDate();
+  }
+
+  if (typeof raw === 'number') {
+    // Excel serial date (day 1 = 1900-01-01 with leap bug correction)
+    if (raw > 0 && raw < 100000) {
+      const base = Date.UTC(1899, 11, 30);
+      const ms = base + Math.floor(raw) * 86400000;
+      const d = new Date(ms);
+      return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+    }
+    return null;
+  }
+
 function toDateKey(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const value = String(raw).trim();
@@ -32,6 +50,12 @@ function toDateKey(raw: string | null | undefined): number | null {
     if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
       return y * 10000 + m * 100 + d;
     }
+  }
+
+  // Fallback para strings parseáveis pelo JS (ex.: "2026-04-18 00:00:00")
+  const parsed = new Date(value);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.getFullYear() * 10000 + (parsed.getMonth() + 1) * 100 + parsed.getDate();
   }
 
   return null;
@@ -83,6 +107,11 @@ function filterVendas(
 ): Venda[] {
   const dInicio = dateOverride?.dataInicio ?? filters.dataInicio;
   const dFim = dateOverride?.dataFim ?? filters.dataFim;
+  let inicioKey = toDateKey(dInicio);
+  let fimKey = toDateKey(dFim);
+  if (inicioKey !== null && fimKey !== null && inicioKey > fimKey) {
+    [inicioKey, fimKey] = [fimKey, inicioKey];
+  }
   const inicioKey = toDateKey(dInicio);
   const fimKey = toDateKey(dFim);
 

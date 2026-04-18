@@ -85,6 +85,14 @@ function normalizeDateForInput(raw: string | null | undefined): string | null {
     return `${y}-${m}-${d}`;
   }
 
+  const parsed = new Date(value);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   return null;
 }
 
@@ -160,17 +168,17 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
           erros: [],
         });
 
-        const now = new Date();
-        const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
         const dates = dbData.vendas
           .map(v => normalizeDateForInput(v.data_instalacao))
           .filter((d): d is string => Boolean(d))
           .sort();
+        const now = new Date();
         const latestDate = dates.length > 0 ? dates[dates.length - 1] : now.toISOString().slice(0, 10);
+        const earliestDate = dates.length > 0 ? dates[0] : latestDate;
 
         setFilters(prev => ({
           ...prev,
-          dataInicio: firstDay,
+          dataInicio: earliestDate,
           dataFim: latestDate,
         }));
       } else {
