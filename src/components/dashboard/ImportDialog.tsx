@@ -65,12 +65,16 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       setImportProgress({ step: 'Recarregando dados...', percent: 95 });
       await reloadFromDatabase();
 
-      if (response.totalInseridas > 0 && response.totalDuplicadas > 0) {
-        toast.success(`${response.totalInseridas} vendas novas salvas. ${response.totalDuplicadas} já existiam no banco.`);
-      } else if (response.totalInseridas > 0) {
-        toast.success(`${response.totalInseridas} vendas salvas no banco de dados!`);
-      } else if (response.totalDuplicadas > 0) {
-        toast.info(`Nenhuma venda nova enviada. ${response.totalDuplicadas} registro(s) deste arquivo já existiam no banco.`);
+      const totalAtualizadas = response.totalAtualizadas || 0;
+      const totalInseridas = response.totalInseridas || 0;
+      const totalProcessadas = response.totalProcessadas || (totalInseridas + totalAtualizadas);
+
+      if (totalInseridas > 0 && totalAtualizadas > 0) {
+        toast.success(`${totalInseridas} venda(s) nova(s) salva(s) e ${totalAtualizadas} atualizada(s). Total processado: ${totalProcessadas}.`);
+      } else if (totalInseridas > 0) {
+        toast.success(`${totalInseridas} venda(s) nova(s) salva(s) no banco de dados!`);
+      } else if (totalAtualizadas > 0) {
+        toast.success(`${totalAtualizadas} venda(s) existente(s) atualizada(s) com sucesso.`);
       } else {
         toast.warning('Nenhuma venda válida foi encontrada para importar.');
       }
