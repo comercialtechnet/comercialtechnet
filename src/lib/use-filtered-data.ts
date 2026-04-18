@@ -3,6 +3,10 @@ import { useFilters } from './filters-context';
 import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
 
 
+export function cleanString(s: string): string {
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+}
+
 function normalizeItem(it: ItemVenda): ItemVenda {
   const descricao = (it.descricao_normalizada || it.descricao_original || '').toUpperCase();
   const categoria = (it.categoria_principal || '').trim().toUpperCase();
@@ -53,9 +57,9 @@ function filterVendas(
   return vendas.filter((v: Venda) => {
     if (dInicio && v.data_instalacao < dInicio) return false;
     if (dFim && v.data_instalacao > dFim) return false;
-    if (filters.vendedor.length > 0 && !filters.vendedor.some(f => f.toUpperCase() === v.vendedor_normalizado)) return false;
-    if (filters.supervisor.length > 0 && !filters.supervisor.some(f => f.toUpperCase() === v.supervisor_normalizado)) return false;
-    if (filters.empresa.length > 0 && !filters.empresa.includes(v.empresa_venda)) return false;
+    if (filters.vendedor.length > 0 && !filters.vendedor.some(f => cleanString(f) === cleanString(v.vendedor_normalizado))) return false;
+    if (filters.supervisor.length > 0 && !filters.supervisor.some(f => cleanString(f) === cleanString(v.supervisor_normalizado))) return false;
+    if (filters.empresa.length > 0 && !filters.empresa.includes(String(v.empresa_venda).toUpperCase())) return false;
     if (filters.categoriaPrincipal) {
       // Use venda UUID (id) for matching itens
       const vendaItens = itens.filter(it => it.venda_id === v.id);
@@ -153,15 +157,36 @@ export function useFilteredData() {
 
     // Supervisores veem apenas vendas da sua equipe
     if (perfil === 'supervisor' && userInfo.nome_supervisor_vinculado) {
-      return allVendas.filter(v => v.supervisor === userInfo.nome_supervisor_vinculado);
+      const supClean = cleanString(userInfo.nome_supervisor_vinculado);
+      const filtered = allVendas.filter(v => {
+        const supField = cleanString(v.supervisor);
+        const supNorm = cleanString(v.supervisor_normalizado);
+        // Comparação exata primeiro, fallback para includes
+        return supField === supClean || supNorm === supClean
+          || supField.includes(supClean) || supClean.includes(supField)
+          || supNorm.includes(supClean) || supClean.includes(supNorm);
+      });
+      console.log(`[Filtro Perfil] Supervisor "${userInfo.nome_supervisor_vinculado}" (clean: "${supClean}") => ${filtered.length}/${allVendas.length} vendas`);
+      return filtered;
     }
 
     // Vendedores/Consultores veem apenas suas próprias vendas
     if ((perfil === 'vendedor' || perfil === 'consultor') && userInfo.nome_vendedor_vinculado) {
-      return allVendas.filter(v => v.vendedor === userInfo.nome_vendedor_vinculado);
+      const vendClean = cleanString(userInfo.nome_vendedor_vinculado);
+      const filtered = allVendas.filter(v => {
+        const vendField = cleanString(v.vendedor);
+        const vendNorm = cleanString(v.vendedor_normalizado);
+        // Comparação exata primeiro, fallback para includes
+        return vendField === vendClean || vendNorm === vendClean
+          || vendField.includes(vendClean) || vendClean.includes(vendField)
+          || vendNorm.includes(vendClean) || vendClean.includes(vendNorm);
+      });
+      console.log(`[Filtro Perfil] Vendedor "${userInfo.nome_vendedor_vinculado}" (clean: "${vendClean}") => ${filtered.length}/${allVendas.length} vendas`);
+      return filtered;
     }
 
     // Se não tem vínculo, não mostra nada
+    console.warn('[Filtro Perfil] Perfil sem vínculo configurado, mostrando 0 vendas.');
     return [];
   }, [importedData, userInfo]);
 

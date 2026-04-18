@@ -205,6 +205,7 @@ export default function Dashboard() {
         </div>
       </header>
 
+
       {/* Desktop Tabs */}
       <div className="bg-card border-b border-border px-3 sm:px-6 hidden md:block">
         <nav className="flex gap-1 overflow-x-auto">

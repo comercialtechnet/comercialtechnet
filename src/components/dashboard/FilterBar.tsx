@@ -1,29 +1,61 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useFilters } from '@/lib/filters-context';
+import { cleanString } from '@/lib/use-filtered-data';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X, Search, SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Calendar } from 'lucide-react';
-import { mockVendas } from '@/lib/mock-data';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 
 export function FilterBar() {
-  const { filters, setFilters, resetFilters, importedData } = useFilters();
+  const { filters, setFilters, resetFilters, importedData, userInfo } = useFilters();
   const [expanded, setExpanded] = useState(false);
   const [showComp, setShowComp] = useState(false);
 
-  const sourceVendas = importedData ? importedData.vendas : mockVendas;
+
+  // Pré-filtrar dados baseado no perfil do usuário (replicando a lógica de useFilteredData)
+  const sourceVendas = useMemo(() => {
+    const allVendas = importedData ? importedData.vendas : [];
+    if (!userInfo) return allVendas;
+
+    const perfil = userInfo.perfil;
+    if (perfil === 'administrador') return allVendas;
+
+    if (perfil === 'supervisor' && userInfo.nome_supervisor_vinculado) {
+      const supClean = cleanString(userInfo.nome_supervisor_vinculado);
+      return allVendas.filter(v => {
+        const supField = cleanString(v.supervisor);
+        const supNorm = cleanString(v.supervisor_normalizado);
+        return supField === supClean || supNorm === supClean
+          || supField.includes(supClean) || supClean.includes(supField)
+          || supNorm.includes(supClean) || supClean.includes(supNorm);
+      });
+    }
+
+    if ((perfil === 'vendedor' || perfil === 'consultor') && userInfo.nome_vendedor_vinculado) {
+      const vendClean = cleanString(userInfo.nome_vendedor_vinculado);
+      return allVendas.filter(v => {
+        const vendField = cleanString(v.vendedor);
+        const vendNorm = cleanString(v.vendedor_normalizado);
+        return vendField === vendClean || vendNorm === vendClean
+          || vendField.includes(vendClean) || vendClean.includes(vendField)
+          || vendNorm.includes(vendClean) || vendClean.includes(vendNorm);
+      });
+    }
+
+    return [];
+  }, [importedData, userInfo]);
 
   const getAvailableOptions = useCallback((ignoreKey: string, extractor: (v: typeof sourceVendas[0]) => string) => {
     let list = sourceVendas;
     if (ignoreKey !== 'vendedor' && filters.vendedor.length > 0) {
-      list = list.filter(v => filters.vendedor.includes(v.vendedor));
+      list = list.filter(v => filters.vendedor.some(f => cleanString(f) === cleanString(v.vendedor_normalizado)));
     }
     if (ignoreKey !== 'supervisor' && filters.supervisor.length > 0) {
-      list = list.filter(v => filters.supervisor.includes(v.supervisor));
+      list = list.filter(v => filters.supervisor.some(f => cleanString(f) === cleanString(v.supervisor_normalizado)));
     }
     if (ignoreKey !== 'empresa' && filters.empresa.length > 0) {
-      list = list.filter(v => filters.empresa.includes(String(v.empresa_venda)));
+      list = list.filter(v => filters.empresa.some(f => cleanString(f) === cleanString(String(v.empresa_venda))));
     }
     if (ignoreKey !== 'tipoVenda' && filters.tipoVenda.length > 0) {
       list = list.filter(v => filters.tipoVenda.includes(v.tipo_venda));
@@ -32,9 +64,9 @@ export function FilterBar() {
     return Array.from(set).sort();
   }, [sourceVendas, filters.vendedor, filters.supervisor, filters.empresa, filters.tipoVenda]);
 
-  const vendedores = useMemo(() => getAvailableOptions('vendedor', v => v.vendedor), [getAvailableOptions]);
-  const empresas = useMemo(() => getAvailableOptions('empresa', v => String(v.empresa_venda)), [getAvailableOptions]);
-  const supervisores = useMemo(() => getAvailableOptions('supervisor', v => v.supervisor), [getAvailableOptions]);
+  const vendedores = useMemo(() => getAvailableOptions('vendedor', v => v.vendedor_normalizado), [getAvailableOptions]);
+  const empresas = useMemo(() => getAvailableOptions('empresa', v => String(v.empresa_venda).toUpperCase()), [getAvailableOptions]);
+  const supervisores = useMemo(() => getAvailableOptions('supervisor', v => v.supervisor_normalizado), [getAvailableOptions]);
   const tiposVenda = useMemo(() => getAvailableOptions('tipoVenda', v => v.tipo_venda), [getAvailableOptions]);
 
   const tipoOptions = useMemo(() => {
@@ -102,7 +134,8 @@ export function FilterBar() {
           <MultiSelectFilter label="Vendedor" options={vendedores} selected={filters.vendedor} onChange={v => updateArray('vendedor', v)} className="w-40" />
           <MultiSelectFilter label="Supervisor" options={supervisores} selected={filters.supervisor} onChange={v => updateArray('supervisor', v)} className="w-40" />
           <MultiSelectFilter label="Tipo Venda" options={tiposVenda} selected={filters.tipoVenda} onChange={v => updateArray('tipoVenda', v)} className="w-32" />
-          <MultiSelectFilter label="Tipo Produto" options={tipoOptions} selected={filters.tipoFiltro} onChange={v => updateArray('tipoFiltro', v)} className="w-40" />          <div className="relative">
+          <MultiSelectFilter label="Tipo Produto" options={tipoOptions} selected={filters.tipoFiltro} onChange={v => updateArray('tipoFiltro', v)} className="w-40" />
+          <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Buscar..." className="h-8 w-48 text-xs pl-8" value={filters.busca} onChange={e => update('busca', e.target.value)} />
           </div>
@@ -155,7 +188,8 @@ export function FilterBar() {
           <MultiSelectFilter label="Vendedor" options={vendedores} selected={filters.vendedor} onChange={v => updateArray('vendedor', v)} />
           <MultiSelectFilter label="Supervisor" options={supervisores} selected={filters.supervisor} onChange={v => updateArray('supervisor', v)} />
           <MultiSelectFilter label="Tipo Venda" options={tiposVenda} selected={filters.tipoVenda} onChange={v => updateArray('tipoVenda', v)} />
-          <MultiSelectFilter label="Tipo Produto" options={tipoOptions} selected={filters.tipoFiltro} onChange={v => updateArray('tipoFiltro', v)} />          <div className="relative col-span-2">
+          <MultiSelectFilter label="Tipo Produto" options={tipoOptions} selected={filters.tipoFiltro} onChange={v => updateArray('tipoFiltro', v)} />
+          <div className="relative col-span-2">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Buscar..." className="h-8 text-xs pl-8" value={filters.busca} onChange={e => update('busca', e.target.value)} />
           </div>

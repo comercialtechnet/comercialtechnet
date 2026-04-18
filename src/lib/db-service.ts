@@ -293,15 +293,16 @@ export async function loadVendasFromDatabase(profile?: UserInfo | null, onProgre
   // Otimização: Select aninhado (Native Join no Supabase) - traz as vendas e seus itens em apenas 1 requisição
   const vendasSelect = 'id,importacao_id,empresa_venda,id_venda,proposta,contrato,id_cliente,cliente,tipo_cliente,id_vendedor,vendedor,vendedor_normalizado,valor_total,tipo_pacote,tipo_venda,data_instalacao,forma_pagamento,com_tv_original,produtos_brutos,supervisor,supervisor_normalizado,quantidade_itens,e_combo,combo_tipo,possui_internet,possui_tv,possui_movel,possui_telefone,possui_mesh,possui_ponto_extra,possui_mudanca_tecnologia,possui_adicionais,chave_deduplicacao,criado_em, itens_venda ( id, venda_id, ordem_item, descricao_original, descricao_normalizada, valor_item, categoria_principal, subcategoria, grupo_combo, flags_json )';
 
-  // Aplicação da Filtragem no Banco (Server-side)
+  // Aplicação da Filtragem no Banco (Server-side) desativada para evitar bloqueio por acentuação
+  // Será executada de forma flexível no Client-Side via use-filtered-data.ts
   const filters: QueryFilter[] = [];
-  if (profile?.perfil === 'supervisor' && profile?.nome_supervisor_vinculado) {
-    filters.push({ column: 'supervisor', op: 'eq', value: profile.nome_supervisor_vinculado });
-  } else if ((profile?.perfil === 'vendedor' || profile?.perfil === 'consultor') && profile?.nome_vendedor_vinculado) {
-    filters.push({ column: 'vendedor', op: 'eq', value: profile.nome_vendedor_vinculado });
-  }
+  // if (profile?.perfil === 'supervisor' && profile?.nome_supervisor_vinculado) {
+  //   filters.push({ column: 'supervisor', op: 'ilike', value: `%${profile.nome_supervisor_vinculado.trim()}%` });
+  // } else if ((profile?.perfil === 'vendedor' || profile?.perfil === 'consultor') && profile?.nome_vendedor_vinculado) {
+  //   filters.push({ column: 'vendedor', op: 'ilike', value: `%${profile.nome_vendedor_vinculado.trim()}%` });
+  // }
 
-  onProgress?.('Buscando vendas...', 35);
+  onProgress?.('Buscando informações no banco de dados...', 35);
 
   const vendasRaw = await fetchAll<RawVendaWithItens>('vendas', {
     select: vendasSelect,
@@ -309,7 +310,7 @@ export async function loadVendasFromDatabase(profile?: UserInfo | null, onProgre
     filters
   }, (loaded, total) => {
     const pct = Math.round(35 + (loaded / Math.max(total, 1)) * 50);
-    onProgress?.(`Baixando vendas... (${loaded}/${total})`, Math.min(pct, 85));
+    onProgress?.(`Buscando informações no banco de dados... (${loaded}/${total})`, Math.min(pct, 85));
   });
 
   if (!vendasRaw || vendasRaw.length === 0) return null;

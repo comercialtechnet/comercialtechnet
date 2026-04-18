@@ -58,7 +58,7 @@ interface FiltersContextType {
   setMonthlyGoals: React.Dispatch<React.SetStateAction<Record<string, MonthlyGoal>>>;
   isLoadingFromDB: boolean;
   loadingProgress: { step: string; percent: number };
-  reloadFromDatabase: () => Promise<void>;
+  reloadFromDatabase: () => Promise<boolean>;
   userInfo: UserInfo | null;
 }
 
@@ -82,7 +82,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   const compManualRef = useRef(false);
   const hasLoadedRef = useRef(false);
 
-  const reloadFromDatabase = useCallback(async () => {
+  const reloadFromDatabase = useCallback(async (): Promise<boolean> => {
     setIsLoadingFromDB(true);
     setLoadingProgress({ step: 'Conectando...', percent: 5 });
 
@@ -161,6 +161,8 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (err) {
       console.warn('Não foi possível carregar dados do banco:', err);
+      // Use standard alert since sonner is not imported
+      alert('Erro crítico ao carregar dados do banco: ' + (err instanceof Error ? err.message : String(err)));
       return false;
     } finally {
       setIsLoadingFromDB(false);
