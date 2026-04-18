@@ -126,6 +126,9 @@ export async function saveImportToDatabase(
     };
   }
 
+  const getItemJoinKey = (venda: Pick<Venda, 'chave_deduplicacao' | 'id_venda'>) =>
+    venda.chave_deduplicacao?.trim() || venda.id_venda.trim();
+
   const itensPorVenda = new Map<string, ItemVenda[]>();
   itens.forEach((item) => {
     const current = itensPorVenda.get(item.venda_id);
@@ -212,7 +215,7 @@ export async function saveImportToDatabase(
         onConflict: 'chave_deduplicacao',
         ignoreDuplicates: true,
       })
-      .select('id, id_venda');
+      .select('id, id_venda, chave_deduplicacao');
 
     if (vendaErr) {
       console.error(`[Import] Erro ao inserir vendas batch ${i}:`, vendaErr);
@@ -220,10 +223,11 @@ export async function saveImportToDatabase(
       continue;
     }
 
-    // Map id_venda -> UUID for itens linking
+    // Map chave da venda -> UUID para vincular itens corretamente
     const vendaIdMap = new Map<string, string>();
-    (insertedVendas || []).forEach((iv: { id_venda: string; id: string }) => {
-      vendaIdMap.set(iv.id_venda, iv.id);
+    (insertedVendas || []).forEach((iv: { id_venda: string; id: string; chave_deduplicacao?: string | null }) => {
+      const key = iv.chave_deduplicacao?.trim() || iv.id_venda;
+      vendaIdMap.set(key, iv.id);
     });
 
     // Collect itens for this batch
@@ -239,10 +243,11 @@ export async function saveImportToDatabase(
       flags_json: Record<string, boolean>;
     }> = [];
     for (const v of batch) {
-      const vendaUuid = vendaIdMap.get(v.id_venda);
+      const vendaUuid = vendaIdMap.get(getItemJoinKey(v));
       if (!vendaUuid) continue;
 
-      const vendaItens = itensPorVenda.get(v.id_venda) || [];
+      // Compatibilidade: tenta a chave composta e, se necessário, o id_venda legado
+      const vendaItens = itensPorVenda.get(getItemJoinKey(v)) || itensPorVenda.get(v.id_venda) || [];
       for (const it of vendaItens) {
         batchItens.push({
           venda_id: vendaUuid,
