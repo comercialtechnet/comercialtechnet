@@ -7,6 +7,36 @@ export function cleanString(s: string): string {
   return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 }
 
+function toDateKey(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const value = String(raw).trim();
+  if (!value) return null;
+
+  // YYYY-MM-DD / YYYY-M-D / YYYY-MM-DDTHH:mm:ss...
+  const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    const y = Number(iso[1]);
+    const m = Number(iso[2]);
+    const d = Number(iso[3]);
+    if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return y * 10000 + m * 100 + d;
+    }
+  }
+
+  // DD/MM/YYYY
+  const br = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (br) {
+    const d = Number(br[1]);
+    const m = Number(br[2]);
+    const y = Number(br[3]);
+    if (y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return y * 10000 + m * 100 + d;
+    }
+  }
+
+  return null;
+}
+
 function normalizeItem(it: ItemVenda): ItemVenda {
   const descricao = (it.descricao_normalizada || it.descricao_original || '').toUpperCase();
   const categoria = (it.categoria_principal || '').trim().toUpperCase();
@@ -53,10 +83,13 @@ function filterVendas(
 ): Venda[] {
   const dInicio = dateOverride?.dataInicio ?? filters.dataInicio;
   const dFim = dateOverride?.dataFim ?? filters.dataFim;
+  const inicioKey = toDateKey(dInicio);
+  const fimKey = toDateKey(dFim);
 
   return vendas.filter((v: Venda) => {
-    if (dInicio && v.data_instalacao < dInicio) return false;
-    if (dFim && v.data_instalacao > dFim) return false;
+    const vendaDateKey = toDateKey(v.data_instalacao);
+    if (inicioKey !== null && (vendaDateKey === null || vendaDateKey < inicioKey)) return false;
+    if (fimKey !== null && (vendaDateKey === null || vendaDateKey > fimKey)) return false;
     // Vendedor: comparar com ambos os campos (normalizado pode estar vazio)
     if (filters.vendedor.length > 0) {
       const hasMatch = filters.vendedor.some(f => {
