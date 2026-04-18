@@ -13,8 +13,14 @@ describe('toDateKey', () => {
     expect(toDateKey('2026-04-18 00:00:00')).toBe(20260418);
   });
 
+  it('aceita Date e serial do Excel', () => {
+    expect(toDateKey(new Date('2026-04-18T12:00:00Z'))).toBe(20260418);
+    expect(toDateKey(46030)).toBe(20260108);
+  });
+
   it('retorna null para valor inválido', () => {
     expect(toDateKey('data invalida')).toBeNull();
     expect(toDateKey(undefined)).toBeNull();
+    expect(toDateKey(0)).toBeNull();
   });
 });
