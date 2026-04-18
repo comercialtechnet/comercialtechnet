@@ -171,7 +171,8 @@ function parseAnaliticoSheet(rows: Record<string, unknown>[], erros: string[]): 
           const { categoria_principal, subcategoria } = classifyProduct(p.descricao);
           return {
             id: `imp-item-${idx}-${pi}`,
-            venda_id: idVenda,
+            // Usa chave composta para não misturar itens quando há id_venda repetido no arquivo
+            venda_id: chave,
             ordem_item: pi + 1,
             descricao_original: `${p.descricao}${p.valor ? ` - R$${p.valor.toFixed(2).replace('.', ',')}` : ''}`,
             descricao_normalizada: p.descricao.toUpperCase(),
@@ -184,7 +185,8 @@ function parseAnaliticoSheet(rows: Record<string, unknown>[], erros: string[]): 
         })
         : [{
           id: `imp-item-${idx}-0`,
-          venda_id: idVenda,
+          // Usa chave composta para não misturar itens quando há id_venda repetido no arquivo
+          venda_id: chave,
           ordem_item: 1,
           descricao_original: produtosBrutos || 'Produto não identificado',
           descricao_normalizada: (produtosBrutos || 'PRODUTO NÃO IDENTIFICADO').toUpperCase(),
