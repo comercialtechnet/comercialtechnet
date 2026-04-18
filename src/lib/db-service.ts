@@ -119,6 +119,9 @@ export async function saveImportToDatabase(
   const getItemJoinKey = (venda: Pick<Venda, 'chave_deduplicacao' | 'id_venda'>) =>
     venda.chave_deduplicacao?.trim() || venda.id_venda.trim();
 
+  const getItemJoinKey = (venda: Pick<Venda, 'chave_deduplicacao' | 'id_venda'>) =>
+    venda.chave_deduplicacao?.trim() || venda.id_venda.trim();
+
   const itensPorVenda = new Map<string, ItemVenda[]>();
   itens.forEach((item) => {
     const current = itensPorVenda.get(item.venda_id);

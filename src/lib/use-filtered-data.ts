@@ -25,6 +25,8 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
     return null;
   }
 
+function toDateKey(raw: string | null | undefined): number | null {
+  if (!raw) return null;
   const value = String(raw).trim();
   if (!value) return null;
 
@@ -110,6 +112,8 @@ function filterVendas(
   if (inicioKey !== null && fimKey !== null && inicioKey > fimKey) {
     [inicioKey, fimKey] = [fimKey, inicioKey];
   }
+  const inicioKey = toDateKey(dInicio);
+  const fimKey = toDateKey(dFim);
 
   return vendas.filter((v: Venda) => {
     const vendaDateKey = toDateKey(v.data_instalacao);
