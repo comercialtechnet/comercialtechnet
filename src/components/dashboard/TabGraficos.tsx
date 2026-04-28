@@ -184,7 +184,7 @@ export function TabGraficos() {
                   />
                 ))}
               </Pie>
-                <Tooltip
+              <Tooltip
                 trigger={tooltipTrigger}
                 contentStyle={chartTooltip.contentStyle}
                 itemStyle={chartTooltip.itemStyle}
@@ -228,12 +228,12 @@ export function TabGraficos() {
                   ))}
                 </Pie>
                 <Tooltip
-                trigger={tooltipTrigger}
-                contentStyle={chartTooltip.contentStyle}
-                itemStyle={chartTooltip.itemStyle}
-                labelStyle={chartTooltip.labelStyle}
-                formatter={(value: number, name: string) => [`${value} vendas`, titleCase(name)]}
-              />
+                  trigger={tooltipTrigger}
+                  contentStyle={chartTooltip.contentStyle}
+                  itemStyle={chartTooltip.itemStyle}
+                  labelStyle={chartTooltip.labelStyle}
+                  formatter={(value: number, name: string) => [`${value} vendas`, titleCase(name)]}
+                />
               </PieChart>
             </ResponsiveContainer>
             <CustomPieLegend
@@ -263,10 +263,10 @@ export function TabGraficos() {
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
               <YAxis
                 yAxisId="left"
-                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                 width={30}
                 label={{ value: 'Vendas', angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: 9, fill: 'hsl(var(--muted-foreground))' } }}
               />
