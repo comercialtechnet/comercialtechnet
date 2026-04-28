@@ -3,19 +3,8 @@ import { useFilteredData } from '@/lib/use-filtered-data';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { ChevronDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { chartTooltip, titleCase } from '@/lib/chart-tooltip';
 
-const themedTooltip = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '8px',
-    fontSize: '12px',
-    color: 'hsl(var(--foreground))',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  },
-  labelStyle: { color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: '4px' },
-  itemStyle: { color: 'hsl(var(--foreground))', fontSize: '11px' },
-};
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Internet': 'hsl(217, 91%, 60%)',
@@ -165,15 +154,15 @@ export function TabProdutos() {
             <BarChart data={catData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
               <XAxis dataKey="name" tick={{ fontSize: 8 }} angle={-35} textAnchor="end" height={80} interval={0} />
               <YAxis tick={{ fontSize: 10 }} width={30} />
-              <Tooltip {...themedTooltip} trigger={tooltipTrigger} labelFormatter={(label) => label} />
+              <Tooltip {...chartTooltip} trigger={tooltipTrigger} labelFormatter={(label) => titleCase(label)} formatter={(v: number, name: string) => [`${v} un.`, titleCase(name)]} />
               {hasComparison && compStats && (
-                <Bar dataKey="compQuantidade" name="Período anterior" radius={[4, 4, 0, 0]} opacity={0.3}>
+                <Bar dataKey="compQuantidade" name="Período anterior" radius={[4, 4, 0, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2}>
                   {catData.map(entry => (
                     <Cell key={`comp-${entry.name}`} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                   ))}
                 </Bar>
               )}
-              <Bar dataKey="quantidade" name="Período atual" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="quantidade" name="Período atual" radius={[4, 4, 0, 0]} stroke="#ffffff" strokeWidth={2}>
                 {catData.map(entry => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}
@@ -203,26 +192,6 @@ export function TabProdutos() {
             ))}
           </div>
         </div>
-
-      {adicionaisDetalhes.length > 0 && (
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-1">O que entrou como Adicionais</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            Itens sem regra específica de classificação aparecem aqui para facilitar auditoria.
-          </p>
-          <div className="space-y-2">
-            {adicionaisDetalhes.map(([name, data]) => (
-              <div key={name} className="flex items-center justify-between gap-3 text-xs sm:text-sm">
-                <span className="font-medium text-foreground truncate">{name}</span>
-                <span className="text-muted-foreground tabular-nums shrink-0">
-                  {data.count} • {fmt(data.fat)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       </div>
     </div>
   );

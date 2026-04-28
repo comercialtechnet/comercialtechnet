@@ -6,21 +6,10 @@ import { KPICard } from './KPICard';
 import { DollarSign, ShoppingCart, Package, Layers, Receipt, Users, UserCheck, Wifi } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { chartTooltip, titleCase } from '@/lib/chart-tooltip';
 
 const COLORS_LIST = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
 
-const themedTooltip = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '8px',
-    fontSize: '12px',
-    color: 'hsl(var(--foreground))',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  },
-  labelStyle: { color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: '4px' },
-  itemStyle: { color: 'hsl(var(--foreground))', fontSize: '11px' },
-};
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Internet': 'hsl(217, 91%, 60%)',
@@ -140,15 +129,15 @@ export function TabResumo() {
             <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 60, left: 5, bottom: 5 }}>
               <XAxis type="number" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
-              <Tooltip {...themedTooltip} trigger={tooltipTrigger} labelFormatter={(label) => label} formatter={(v: number, name: string) => [fmt(v), name === 'Período anterior' ? compLabel : currentLabel]} />
+              <Tooltip {...chartTooltip} trigger={tooltipTrigger} labelFormatter={(label) => titleCase(label)} formatter={(v: number, name: string) => [fmt(v), name === 'Período anterior' ? compLabel : currentLabel]} />
               {hasComparison && compStats && (
-                <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3}>
+                <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2}>
                   {catData.map((entry) => (
                     <Cell key={`comp-${entry.name}`} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                   ))}
                 </Bar>
               )}
-              <Bar dataKey="faturamento" name="Período atual" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="faturamento" name="Período atual" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2}>
                 {catData.map((entry) => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}
@@ -166,33 +155,33 @@ export function TabResumo() {
                 <p className="text-[10px] font-medium text-center text-primary mb-1">Atual</p>
               )}
               <div className="w-full" style={{ height: hasComparison ? 180 : 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={topCategoryData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="78%"
-                    innerRadius="44%"
-                    paddingAngle={3}
-                    stroke="#ffffff"
-                    strokeWidth={3}
-                    onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
-                  >
-                    {topCategoryData.map((d, i) => (
-                      <Cell
-                        key={i}
-                        fill={CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length]}
-                        style={{ outline: 'none', cursor: 'pointer' }}
-                        opacity={activeCategoryName === null || activeCategoryName === d.name ? 1 : 0.3}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip trigger={tooltipTrigger} contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
-                </PieChart>
-              </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={topCategoryData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius="78%"
+                      innerRadius="44%"
+                      paddingAngle={3}
+                      stroke="#ffffff"
+                      strokeWidth={3}
+                      onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
+                    >
+                      {topCategoryData.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length]}
+                          style={{ outline: 'none', cursor: 'pointer' }}
+                          opacity={activeCategoryName === null || activeCategoryName === d.name ? 1 : 0.3}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip trigger={tooltipTrigger} contentStyle={chartTooltip.contentStyle} itemStyle={chartTooltip.itemStyle} labelStyle={chartTooltip.labelStyle} formatter={(v: number, name: string) => [`${v} un.`, titleCase(name)]} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
                 {topCategoryData.map((d, i) => {
@@ -217,33 +206,33 @@ export function TabResumo() {
               <div className="min-w-0">
                 <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">Anterior</p>
                 <div className="w-full" style={{ height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={compTopCategoryData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius="78%"
-                      innerRadius="44%"
-                      paddingAngle={3}
-                      stroke="#ffffff"
-                      strokeWidth={3}
-                      onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
-                    >
-                      {compTopCategoryData.map((d, i) => (
-                        <Cell
-                          key={i}
-                          fill={CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length]}
-                          style={{ outline: 'none', cursor: 'pointer' }}
-                          opacity={activeCategoryName === null || activeCategoryName === d.name ? 0.6 : 0.2}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip trigger={tooltipTrigger} contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
-                  </PieChart>
-                </ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={compTopCategoryData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius="78%"
+                        innerRadius="44%"
+                        paddingAngle={3}
+                        stroke="#ffffff"
+                        strokeWidth={3}
+                        onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
+                      >
+                        {compTopCategoryData.map((d, i) => (
+                          <Cell
+                            key={i}
+                            fill={CATEGORY_COLORS[d.name] || COLORS_LIST[i % COLORS_LIST.length]}
+                            style={{ outline: 'none', cursor: 'pointer' }}
+                            opacity={activeCategoryName === null || activeCategoryName === d.name ? 0.6 : 0.2}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip trigger={tooltipTrigger} contentStyle={chartTooltip.contentStyle} itemStyle={chartTooltip.itemStyle} labelStyle={chartTooltip.labelStyle} formatter={(v: number, name: string) => [`${v} un.`, titleCase(name)]} />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
                 <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
                   {compTopCategoryData.map((d, i) => {

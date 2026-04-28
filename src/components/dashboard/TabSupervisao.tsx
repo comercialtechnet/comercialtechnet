@@ -5,6 +5,7 @@ import { Users, AlertTriangle, ChevronLeft, ChevronRight, TrendingUp, TrendingDo
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from 'recharts';
 import { motion } from 'framer-motion';
+import { chartTooltip, titleCase } from '@/lib/chart-tooltip';
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const PAGE_SIZE = 6;
@@ -232,37 +233,39 @@ export function TabSupervisao() {
           <div className="lg:col-span-2 bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
             <h3 className="text-sm font-semibold text-foreground mb-3">Faturamento por vendedor</h3>
             <div className="w-full" style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dataVendedores} margin={{ top: 8, right: 4, left: -16, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="nome" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-25} textAnchor="end" height={50} />
-                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} width={36} />
-                <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                  formatter={(v: number) => fmt(v)}
-                />
-                <Bar dataKey="faturamento" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dataVendedores} margin={{ top: 8, right: 4, left: -16, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="nome" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-25} textAnchor="end" height={50} />
+                  <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={36} />
+                  <Tooltip
+                    {...chartTooltip}
+                    labelFormatter={(label) => titleCase(label)}
+                    formatter={(v: number) => [fmt(v), 'Faturamento']}
+                  />
+                  <Bar dataKey="faturamento" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} stroke="#ffffff" strokeWidth={2} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
           <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
             <h3 className="text-sm font-semibold text-foreground mb-3">Mix de produtos</h3>
             <div className="w-full" style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={dataCategorias} dataKey="qtd" nameKey="nome" cx="50%" cy="50%" innerRadius="40%" outerRadius="75%" paddingAngle={3} stroke="#ffffff" strokeWidth={3}>
-                  {dataCategorias.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                />
-                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} iconSize={8} />
-              </PieChart>
-            </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataCategorias} dataKey="qtd" nameKey="nome" cx="50%" cy="50%" innerRadius="40%" outerRadius="75%" paddingAngle={3} stroke="#ffffff" strokeWidth={3}>
+                    {dataCategorias.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    {...chartTooltip}
+                    formatter={(value: number, name: string) => [`${value} un.`, titleCase(name)]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} iconSize={8} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
@@ -273,21 +276,22 @@ export function TabSupervisao() {
             <h3 className="text-sm font-semibold text-foreground mb-3">Evolução diária — vendas e faturamento</h3>
             {dataEvolucao.length > 1 ? (
               <div className="w-full" style={{ height: 240 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dataEvolucao} margin={{ top: 8, right: 4, left: -16, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
-                  <YAxis yAxisId="left" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={32} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} width={36} />
-                  <Tooltip
-                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                    formatter={(value: number, name: string) => name === 'Faturamento' ? [fmt(value), name] : [value, name]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line yAxisId="left" type="monotone" dataKey="vendas" name="Vendas" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="faturamento" name="Faturamento" stroke="hsl(160, 84%, 39%)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dataEvolucao} margin={{ top: 8, right: 4, left: -16, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
+                    <YAxis yAxisId="left" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={32} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={36} />
+                    <Tooltip
+                      {...chartTooltip}
+                      labelFormatter={(label) => label}
+                      formatter={(value: number, name: string) => name === 'Faturamento' ? [fmt(value), name] : [`${value} vendas`, name]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="vendas" name="Vendas" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(var(--primary))', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(var(--primary))', strokeWidth: 2.5 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="faturamento" name="Faturamento" stroke="hsl(160, 84%, 39%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(160, 84%, 39%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(160, 84%, 39%)', strokeWidth: 2.5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             ) : (
               <div className="h-[240px] flex items-center justify-center text-xs text-muted-foreground">
@@ -299,19 +303,20 @@ export function TabSupervisao() {
           <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
             <h3 className="text-sm font-semibold text-foreground mb-3">Tipo de venda (UP vs Novas)</h3>
             <div className="w-full" style={{ height: 240 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={dataTipoVenda} dataKey="value" nameKey="nome" cx="50%" cy="50%" innerRadius="45%" outerRadius="78%" paddingAngle={4} stroke="#ffffff" strokeWidth={3}>
-                  {dataTipoVenda.map((d, i) => (
-                    <Cell key={d.nome} fill={d.nome === 'Upgrade' ? 'hsl(38, 92%, 50%)' : d.nome === 'Novas' ? 'hsl(var(--primary))' : COLORS[(i + 2) % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} iconSize={8} />
-              </PieChart>
-            </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={dataTipoVenda} dataKey="value" nameKey="nome" cx="50%" cy="50%" innerRadius="45%" outerRadius="78%" paddingAngle={4} stroke="#ffffff" strokeWidth={3}>
+                    {dataTipoVenda.map((d, i) => (
+                      <Cell key={d.nome} fill={d.nome === 'Upgrade' ? 'hsl(38, 92%, 50%)' : d.nome === 'Novas' ? 'hsl(var(--primary))' : COLORS[(i + 2) % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    {...chartTooltip}
+                    formatter={(value: number, name: string) => [`${value} vendas`, titleCase(name)]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} iconSize={8} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
             <p className="text-center text-xs text-muted-foreground mt-1">
               {percUpgrade.toFixed(1)}% das vendas são upgrades

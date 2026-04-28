@@ -3,7 +3,8 @@ import { useFilteredData } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
 import { Venda } from '@/lib/types';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LabelList, CartesianGrid } from 'recharts';
+import { chartTooltip, titleCase } from '@/lib/chart-tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const COLORS = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
@@ -15,31 +16,6 @@ const EMPRESA_COLORS: Record<string, string> = {
   'RDT': 'hsl(347,77%,50%)',
 };
 
-const tooltipStyle = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--card))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '8px',
-    fontSize: '12px',
-    color: 'hsl(var(--foreground))',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  },
-  labelStyle: {
-    color: 'hsl(var(--foreground))',
-    fontWeight: 600,
-    marginBottom: '4px',
-  },
-  itemStyle: {
-    color: 'hsl(var(--foreground))',
-    fontSize: '11px',
-  },
-};
-
-const pieTooltipStyle = {
-  contentStyle: tooltipStyle.contentStyle,
-  labelStyle: tooltipStyle.labelStyle,
-  itemStyle: tooltipStyle.itemStyle,
-};
 
 const CustomPieLegend = ({ data, colorOffset, faded, activeName, onItemClick }: { data: { name: string; value: number }[]; colorOffset: number; faded?: boolean; activeName?: string | null; onItemClick?: (name: string) => void }) => {
   const total = data.reduce((s, d) => s + d.value, 0);
@@ -90,7 +66,7 @@ export function TabGraficos() {
     });
     return Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, data], idx) => ({
       idx: idx + 1,
-      date: date.slice(5),
+      date: `${date.slice(8)}/${date.slice(5, 7)}`,
       ...data,
     }));
   };
@@ -208,11 +184,12 @@ export function TabGraficos() {
                   />
                 ))}
               </Pie>
-              <Tooltip
+                <Tooltip
                 trigger={tooltipTrigger}
-                contentStyle={pieTooltipStyle.contentStyle}
-                itemStyle={pieTooltipStyle.itemStyle}
-                formatter={(value: number, name: string) => [`${value} vendas`, name]}
+                contentStyle={chartTooltip.contentStyle}
+                itemStyle={chartTooltip.itemStyle}
+                labelStyle={chartTooltip.labelStyle}
+                formatter={(value: number, name: string) => [`${value} vendas`, titleCase(name)]}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -226,7 +203,7 @@ export function TabGraficos() {
         {hasComparison && compData.length > 0 && (
           <div className="min-w-0">
             <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">{compLabel}</p>
-              <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie
                   data={compData}
@@ -234,11 +211,11 @@ export function TabGraficos() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                    outerRadius="76%"
-                    innerRadius="42%"
-                    paddingAngle={3}
-                    stroke="#ffffff"
-                    strokeWidth={3}
+                  outerRadius="76%"
+                  innerRadius="42%"
+                  paddingAngle={3}
+                  stroke="#ffffff"
+                  strokeWidth={3}
                   onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
                 >
                   {compData.map((d, i) => (
@@ -251,11 +228,12 @@ export function TabGraficos() {
                   ))}
                 </Pie>
                 <Tooltip
-                  trigger={tooltipTrigger}
-                  contentStyle={pieTooltipStyle.contentStyle}
-                  itemStyle={pieTooltipStyle.itemStyle}
-                  formatter={(value: number, name: string) => [`${value} vendas`, name]}
-                />
+                trigger={tooltipTrigger}
+                contentStyle={chartTooltip.contentStyle}
+                itemStyle={chartTooltip.itemStyle}
+                labelStyle={chartTooltip.labelStyle}
+                formatter={(value: number, name: string) => [`${value} vendas`, titleCase(name)]}
+              />
               </PieChart>
             </ResponsiveContainer>
             <CustomPieLegend
@@ -279,49 +257,47 @@ export function TabGraficos() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
-        {/* Evolução Faturamento */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
-          <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Faturamento</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={dailyData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
-              <XAxis dataKey="idx" tick={{ fontSize: 9 }} />
-              <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9 }} width={40} />
+        {/* Evolução Diária — Vendas e Faturamento (unificado) */}
+        <div className="lg:col-span-2 bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
+          <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Vendas e Faturamento</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={dailyData} margin={{ top: 8, right: 8, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
+              <YAxis
+                yAxisId="left"
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                width={30}
+                label={{ value: 'Vendas', angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: 9, fill: 'hsl(var(--muted-foreground))' } }}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tickFormatter={v => `${(v / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                width={38}
+                label={{ value: 'Faturamento', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: 9, fill: 'hsl(var(--muted-foreground))' } }}
+              />
               <Tooltip
                 trigger={tooltipTrigger}
-                {...tooltipStyle}
-                labelFormatter={(label) => `Dia ${label}`}
-                formatter={(v: number, name: string) => [fmt(v), name]}
+                {...chartTooltip}
+                labelFormatter={(label) => label}
+                formatter={(v: number, name: string) => {
+                  if (name.toLowerCase().includes('faturamento') || name === compLabel) return [fmt(v), titleCase(name)];
+                  return [`${v} vendas`, titleCase(name)];
+                }}
               />
-              <Line type="monotone" dataKey="faturamento" name={currentLabel} stroke="hsl(347,77%,50%)" strokeWidth={2} dot={false} />
-              {hasComparison && (
-                <Line type="monotone" dataKey="compFaturamento" name={compLabel} stroke="hsl(347,77%,75%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-              )}
-              {hasComparison && <Legend wrapperStyle={{ fontSize: 10 }} />}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Evolução Vendas */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
-          <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Vendas</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={dailyData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
-              <XAxis dataKey="idx" tick={{ fontSize: 9 }} />
-              <YAxis tick={{ fontSize: 9 }} width={30} />
-              <Tooltip
-                trigger={tooltipTrigger}
-                {...tooltipStyle}
-                labelFormatter={(label) => `Dia ${label}`}
-              />
-              <Line type="monotone" dataKey="vendas" name={`Vendas (${currentLabel})`} stroke="hsl(217,91%,60%)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="combos" name={`Combos (${currentLabel})`} stroke="hsl(160,84%,39%)" strokeWidth={2} dot={false} />
-              {hasComparison && (
-                <>
-                  <Line type="monotone" dataKey="compVendas" name={`Vendas (${compLabel})`} stroke="hsl(217,91%,80%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                  <Line type="monotone" dataKey="compCombos" name={`Combos (${compLabel})`} stroke="hsl(160,84%,65%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                </>
-              )}
               <Legend wrapperStyle={{ fontSize: 10 }} />
+              {/* Vendas — eixo esquerdo */}
+              <Line yAxisId="left" type="monotone" dataKey="vendas" name={`Vendas (${currentLabel})`} stroke="hsl(347,77%,50%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(347,77%,50%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(347,77%,50%)', strokeWidth: 2.5 }} />
+              {hasComparison && (
+                <Line yAxisId="left" type="monotone" dataKey="compVendas" name={`Vendas (${compLabel})`} stroke="hsl(347,77%,75%)" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3, fill: '#ffffff', stroke: 'hsl(347,77%,75%)', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+              )}
+              {/* Faturamento — eixo direito */}
+              <Line yAxisId="right" type="monotone" dataKey="faturamento" name={`Faturamento (${currentLabel})`} stroke="hsl(160,84%,39%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(160,84%,39%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(160,84%,39%)', strokeWidth: 2.5 }} />
+              {hasComparison && (
+                <Line yAxisId="right" type="monotone" dataKey="compFaturamento" name={`Faturamento (${compLabel})`} stroke="hsl(160,84%,65%)" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3, fill: '#ffffff', stroke: 'hsl(160,84%,65%)', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -353,22 +329,22 @@ export function TabGraficos() {
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={48} />
               <Tooltip
                 trigger={tooltipTrigger}
-                {...tooltipStyle}
-                labelFormatter={(label) => `Empresa: ${label}`}
+                {...chartTooltip}
+                labelFormatter={(label) => `Empresa: ${titleCase(label)}`}
                 formatter={(v: number, name: string) => {
                   if (name === 'compVendas') return [`${v} vendas`, compLabel];
                   if (name === 'vendas') return [`${v} vendas`, currentLabel];
-                  return [fmt(v), name];
+                  return [fmt(v), titleCase(name)];
                 }}
               />
               {hasComparison && (
-                <Bar dataKey="compVendas" name="compVendas" radius={[0, 4, 4, 0]} opacity={0.3}>
+                <Bar dataKey="compVendas" name="compVendas" radius={[0, 4, 4, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2}>
                   {empresaData.map((entry) => (
                     <Cell key={`comp-${entry.name}`} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
                   ))}
                 </Bar>
               )}
-              <Bar dataKey="vendas" name="vendas" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="vendas" name="vendas" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2}>
                 {empresaData.map((entry) => (
                   <Cell key={entry.name} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
                 ))}
