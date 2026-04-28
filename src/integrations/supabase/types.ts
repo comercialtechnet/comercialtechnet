@@ -138,6 +138,8 @@ export type Database = {
           criado_em: string
           id: string
           nome_normalizado: string
+          nome_supervisor_vinculado: string | null
+          nome_vendedor_vinculado: string | null
           nome_vinculado: string
           perfil: Database["public"]["Enums"]["app_role"]
           status_aprovacao: Database["public"]["Enums"]["approval_status"]
@@ -149,6 +151,8 @@ export type Database = {
           criado_em?: string
           id: string
           nome_normalizado: string
+          nome_supervisor_vinculado?: string | null
+          nome_vendedor_vinculado?: string | null
           nome_vinculado: string
           perfil?: Database["public"]["Enums"]["app_role"]
           status_aprovacao?: Database["public"]["Enums"]["approval_status"]
@@ -160,6 +164,8 @@ export type Database = {
           criado_em?: string
           id?: string
           nome_normalizado?: string
+          nome_supervisor_vinculado?: string | null
+          nome_vendedor_vinculado?: string | null
           nome_vinculado?: string
           perfil?: Database["public"]["Enums"]["app_role"]
           status_aprovacao?: Database["public"]["Enums"]["approval_status"]

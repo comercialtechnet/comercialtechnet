@@ -26,7 +26,7 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
   if (raw === null || raw === undefined || raw === '') return null;
   if (raw instanceof Date) {
     if (isNaN(raw.getTime())) return null;
-    return buildDateKey(raw.getFullYear(), raw.getMonth() + 1, raw.getDate());
+    return buildDateKey(raw.getUTCFullYear(), raw.getUTCMonth() + 1, raw.getUTCDate());
   }
 
   if (typeof raw === 'number') {
@@ -77,12 +77,6 @@ export function toDateKey(raw: string | number | Date | null | undefined): numbe
     const m = Number(isoSlash[2]);
     const d = Number(isoSlash[3]);
     if (isValidYMD(y, m, d)) return buildDateKey(y, m, d);
-  }
-
-  // Fallback para strings parseáveis pelo JS (ex.: "2026-04-18 00:00:00")
-  const parsed = new Date(value);
-  if (!isNaN(parsed.getTime())) {
-    return buildDateKey(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
   }
 
   return null;
@@ -325,5 +319,31 @@ export function useFilteredData() {
     return computeStats(compFilteredVendas, sourceItens);
   }, [compFilteredVendas, sourceItens, hasComparison]);
 
-  return { filteredVendas, filteredItens, stats, compStats, compFilteredVendas, hasComparison };
+  // Stats globais (sem filtro de perfil) — usado pelo Ranking, que mostra todos
+  const allVendasUnfiltered = useMemo(() => {
+    return importedData ? importedData.vendas : [];
+  }, [importedData]);
+
+  const globalFilteredVendas = useMemo(() => {
+    return filterVendas(allVendasUnfiltered, sourceItens, filters);
+  }, [filters, allVendasUnfiltered, sourceItens]);
+
+  const globalStats = useMemo(() => {
+    return computeStats(globalFilteredVendas, sourceItens);
+  }, [globalFilteredVendas, sourceItens]);
+
+  const globalFilteredItens = useMemo(() => {
+    const ids = new Set(globalFilteredVendas.map(v => v.id));
+    return sourceItens.filter(it => ids.has(it.venda_id));
+  }, [globalFilteredVendas, sourceItens]);
+
+  // Stats globais SEM os filtros de vendedor/supervisor — usados pelo Ranking
+  // para preservar a posição real mesmo quando filtra por equipe ou vendedor.
+  const rankingBaseStats = useMemo(() => {
+    const baseFilters: DashboardFilters = { ...filters, vendedor: [], supervisor: [] };
+    const baseVendas = filterVendas(allVendasUnfiltered, sourceItens, baseFilters);
+    return computeStats(baseVendas, sourceItens);
+  }, [filters, allVendasUnfiltered, sourceItens]);
+
+  return { filteredVendas, filteredItens, stats, compStats, compFilteredVendas, hasComparison, globalStats, globalFilteredVendas, globalFilteredItens, rankingBaseStats };
 }

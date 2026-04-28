@@ -2,7 +2,7 @@ import { supabaseExternal as supabase } from '@/integrations/supabase/external-c
 import { Venda, ItemVenda, MonthlyGoal } from './types';
 import type { UserInfo } from './filters-context';
 
-type QueryFilter = { column: string; op: 'in' | 'eq'; value: unknown };
+type QueryFilter = { column: string; op: 'in' | 'eq' | 'ilike' | 'gte' | 'lte'; value: unknown };
 type RawRow = Record<string, unknown>;
 type RawVendaWithItens = RawRow & { itens_venda?: RawRow[] };
 
@@ -13,11 +13,12 @@ async function fetchAll<T>(
   query: {
     select?: string;
     order?: { column: string; ascending: boolean };
+    pageSize?: number;
     filters?: QueryFilter[];
   } = {},
   onProgress?: (loaded: number, total: number) => void
 ): Promise<T[]> {
-  const PAGE_SIZE = 5000;
+  const PAGE_SIZE = query.pageSize ?? 1000;
 
   // Constrói a base da query para contar e buscar
   const buildQueryBase = () => {
@@ -27,6 +28,9 @@ async function fetchAll<T>(
       for (const f of query.filters) {
         if (f.op === 'in') q = q.in(f.column, f.value as string[]);
         else if (f.op === 'eq') q = q.eq(f.column, f.value as string);
+        else if (f.op === 'ilike') q = q.ilike(f.column, f.value as string);
+        else if (f.op === 'gte') q = q.gte(f.column, f.value as string);
+        else if (f.op === 'lte') q = q.lte(f.column, f.value as string);
       }
     }
     return q;
@@ -46,21 +50,26 @@ async function fetchAll<T>(
     const to = from + PAGE_SIZE - 1;
     tasks.push(async () => {
       let q = buildQueryBase().select(query.select || '*');
-      if (query.order) q = q.order(query.order.column, { ascending: query.order.ascending });
+      if (query.order) {
+        q = q.order(query.order.column, { ascending: query.order.ascending, nullsFirst: false });
+      }
+      // Tie-breaker determinístico para garantir paginação estável (evita registros duplicados/perdidos
+      // quando há empates ou NULLs na coluna de ordenação principal).
+      q = q.order('id', { ascending: true });
       const { data, error } = await q.range(from, to);
       if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
       return (data || []) as T[];
     });
   }
 
-  // 3. Roda em paralelo (com limite de 5 por vez pra não dar Rate Limit c/ Supabase)
-  const CONCURRENCY = 5;
-  let allData: T[] = [];
+  // 3. Roda em paralelo (concurrency mais agressiva + push em vez de spread O(n²))
+  const CONCURRENCY = 6;
+  const allData: T[] = [];
   for (let i = 0; i < tasks.length; i += CONCURRENCY) {
     const batch = tasks.slice(i, i + CONCURRENCY);
     const results = await Promise.all(batch.map(t => t()));
     for (const res of results) {
-      allData = [...allData, ...res];
+      for (let j = 0; j < res.length; j++) allData.push(res[j]);
     }
     onProgress?.(allData.length, count);
   }
@@ -309,20 +318,19 @@ export async function loadVendasFromDatabase(profile?: UserInfo | null, onProgre
   // Otimização: Select aninhado (Native Join no Supabase) - traz as vendas e seus itens em apenas 1 requisição
   const vendasSelect = 'id,importacao_id,empresa_venda,id_venda,proposta,contrato,id_cliente,cliente,tipo_cliente,id_vendedor,vendedor,vendedor_normalizado,valor_total,tipo_pacote,tipo_venda,data_instalacao,forma_pagamento,com_tv_original,produtos_brutos,supervisor,supervisor_normalizado,quantidade_itens,e_combo,combo_tipo,possui_internet,possui_tv,possui_movel,possui_telefone,possui_mesh,possui_ponto_extra,possui_mudanca_tecnologia,possui_adicionais,chave_deduplicacao,criado_em, itens_venda ( id, venda_id, ordem_item, descricao_original, descricao_normalizada, valor_item, categoria_principal, subcategoria, grupo_combo, flags_json )';
 
-  // Aplicação da Filtragem no Banco (Server-side) desativada para evitar bloqueio por acentuação
-  // Será executada de forma flexível no Client-Side via use-filtered-data.ts
+  // Filtro server-side: vendedor/consultor só vê suas próprias vendas (reduz drasticamente o payload).
+  // Para administrador e supervisor carregamos tudo (precisam ver Ranking global / equipe).
   const filters: QueryFilter[] = [];
-  // if (profile?.perfil === 'supervisor' && profile?.nome_supervisor_vinculado) {
-  //   filters.push({ column: 'supervisor', op: 'ilike', value: `%${profile.nome_supervisor_vinculado.trim()}%` });
-  // } else if ((profile?.perfil === 'vendedor' || profile?.perfil === 'consultor') && profile?.nome_vendedor_vinculado) {
-  //   filters.push({ column: 'vendedor', op: 'ilike', value: `%${profile.nome_vendedor_vinculado.trim()}%` });
-  // }
+  if ((profile?.perfil === 'vendedor' || profile?.perfil === 'consultor') && profile?.nome_vendedor_vinculado) {
+    filters.push({ column: 'vendedor', op: 'ilike', value: `%${profile.nome_vendedor_vinculado.trim()}%` });
+  }
 
   onProgress?.('Buscando informações no banco de dados...', 35);
 
   const vendasRaw = await fetchAll<RawVendaWithItens>('vendas', {
     select: vendasSelect,
     order: { column: 'data_instalacao', ascending: false },
+    pageSize: 2000,
     filters
   }, (loaded, total) => {
     const pct = Math.round(35 + (loaded / Math.max(total, 1)) * 50);

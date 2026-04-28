@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
-import { useFilters } from '@/lib/filters-context';
 
-export function LoadingScreen() {
-  const { loadingProgress } = useFilters();
+interface LoadingScreenProps {
+  loadingProgress?: { step: string; percent: number };
+}
+
+export function LoadingScreen({ loadingProgress = { step: 'Carregando...', percent: 0 } }: LoadingScreenProps) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6">

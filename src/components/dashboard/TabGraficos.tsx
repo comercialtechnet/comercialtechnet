@@ -4,6 +4,7 @@ import { useFilters } from '@/lib/filters-context';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
 import { Venda } from '@/lib/types';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const COLORS = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
 const COLORS_FADED = ['hsl(217,91%,80%)', 'hsl(271,91%,82%)', 'hsl(347,77%,75%)', 'hsl(38,92%,75%)', 'hsl(160,84%,65%)', 'hsl(199,89%,72%)', 'hsl(215,16%,72%)'];
@@ -71,6 +72,8 @@ export function TabGraficos() {
   const [activePieName, setActivePieName] = useState<string | null>(null);
   const { filteredVendas, stats, compFilteredVendas, compStats, hasComparison } = useFilteredData();
   const { filters } = useFilters();
+  const isMobile = useIsMobile();
+  const tooltipTrigger: 'click' | 'hover' = isMobile ? 'click' : 'hover';
 
   const currentLabel = formatPeriodLabel(filters.dataInicio) || 'Atual';
   const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
@@ -178,8 +181,8 @@ export function TabGraficos() {
     colorOffset: number
   ) => (
     <div>
-      <div className={hasComparison && compData.length > 0 ? 'grid grid-cols-2 gap-1' : ''}>
-        <div>
+      <div className={hasComparison && compData.length > 0 ? 'grid grid-cols-2 gap-1 min-w-0' : ''}>
+        <div className="min-w-0">
           {hasComparison && compData.length > 0 && <p className="text-[10px] font-medium text-center text-primary mb-1">{currentLabel}</p>}
           <ResponsiveContainer width="100%" height={hasComparison && compData.length > 0 ? 180 : 200}>
             <PieChart>
@@ -189,8 +192,11 @@ export function TabGraficos() {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={hasComparison ? 55 : 70}
-                innerRadius={hasComparison ? 25 : 30}
+                outerRadius={hasComparison ? '76%' : '78%'}
+                innerRadius={hasComparison ? '42%' : '46%'}
+                paddingAngle={3}
+                stroke="#ffffff"
+                strokeWidth={3}
                 onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
               >
                 {currentData.map((d, i) => (
@@ -203,6 +209,7 @@ export function TabGraficos() {
                 ))}
               </Pie>
               <Tooltip
+                trigger={tooltipTrigger}
                 contentStyle={pieTooltipStyle.contentStyle}
                 itemStyle={pieTooltipStyle.itemStyle}
                 formatter={(value: number, name: string) => [`${value} vendas`, name]}
@@ -217,9 +224,9 @@ export function TabGraficos() {
           />
         </div>
         {hasComparison && compData.length > 0 && (
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">{compLabel}</p>
-            <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie
                   data={compData}
@@ -227,8 +234,11 @@ export function TabGraficos() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={55}
-                  innerRadius={25}
+                    outerRadius="76%"
+                    innerRadius="42%"
+                    paddingAngle={3}
+                    stroke="#ffffff"
+                    strokeWidth={3}
                   onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
                 >
                   {compData.map((d, i) => (
@@ -241,6 +251,7 @@ export function TabGraficos() {
                   ))}
                 </Pie>
                 <Tooltip
+                  trigger={tooltipTrigger}
                   contentStyle={pieTooltipStyle.contentStyle}
                   itemStyle={pieTooltipStyle.itemStyle}
                   formatter={(value: number, name: string) => [`${value} vendas`, name]}
@@ -267,15 +278,16 @@ export function TabGraficos() {
         <p className="text-xs sm:text-sm text-muted-foreground">Visualizações interativas</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
         {/* Evolução Faturamento */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Faturamento</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={dailyData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
               <XAxis dataKey="idx" tick={{ fontSize: 9 }} />
               <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9 }} width={40} />
               <Tooltip
+                trigger={tooltipTrigger}
                 {...tooltipStyle}
                 labelFormatter={(label) => `Dia ${label}`}
                 formatter={(v: number, name: string) => [fmt(v), name]}
@@ -290,13 +302,14 @@ export function TabGraficos() {
         </div>
 
         {/* Evolução Vendas */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Evolução Diária — Vendas</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={dailyData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
               <XAxis dataKey="idx" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 9 }} width={30} />
               <Tooltip
+                trigger={tooltipTrigger}
                 {...tooltipStyle}
                 labelFormatter={(label) => `Dia ${label}`}
               />
@@ -314,31 +327,32 @@ export function TabGraficos() {
         </div>
 
         {/* Tipo de Venda */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Tipo de Venda</h3>
           {renderDualPie('Tipo de Venda', tipoVendaData, compTipoVendaData, 0)}
         </div>
 
         {/* Tipo de Cliente */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Tipo de Cliente</h3>
           {renderDualPie('Tipo de Cliente', tipoClienteData, compTipoClienteData, 2)}
         </div>
 
         {/* Forma Pagamento */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Forma de Pagamento</h3>
           {renderDualPie('Forma de Pagamento', formaPagData, compFormaPagData, 4)}
         </div>
 
         {/* Vendas por Empresa */}
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-xs sm:text-sm font-semibold text-foreground mb-4">Vendas por Empresa</h3>
           <ResponsiveContainer width="100%" height={Math.max(180, empresaData.length * 60)}>
-            <BarChart data={empresaData} layout="vertical" margin={{ top: 5, right: 90, left: 5, bottom: 5 }}>
+            <BarChart data={empresaData} layout="vertical" margin={{ top: 5, right: isMobile ? 50 : 90, left: 5, bottom: 5 }}>
               <XAxis type="number" tick={{ fontSize: 9 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={50} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={48} />
               <Tooltip
+                trigger={tooltipTrigger}
                 {...tooltipStyle}
                 labelFormatter={(label) => `Empresa: ${label}`}
                 formatter={(v: number, name: string) => {
@@ -362,7 +376,7 @@ export function TabGraficos() {
                   dataKey="vendas"
                   position="right"
                   style={{ fontSize: 10, fontWeight: 600, fill: 'hsl(var(--foreground))' }}
-                  formatter={(v: number) => `${v} vendas`}
+                  formatter={(v: number) => isMobile ? `${v}` : `${v} vendas`}
                 />
               </Bar>
             </BarChart>

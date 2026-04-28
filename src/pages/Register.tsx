@@ -50,7 +50,7 @@ export default function Register() {
       // Sign out immediately so the pending user doesn't stay logged in
       await supabase.auth.signOut();
       setSubmitted(true);
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast.error('Erro ao criar conta. Tente novamente.');
       console.error(err);
     } finally {

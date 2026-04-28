@@ -41,14 +41,26 @@ export function formatMonthKey(key: string): string {
 export function getDefaultComparisonDates(dataInicio: string, dataFim: string): { compDataInicio: string; compDataFim: string } {
   if (!dataInicio) return { compDataInicio: '', compDataFim: '' };
   const start = new Date(dataInicio + 'T00:00:00');
-  if (isNaN(start.getTime())) return { compDataInicio: '', compDataFim: '' };
+  const end = new Date((dataFim || dataInicio) + 'T00:00:00');
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return { compDataInicio: '', compDataFim: '' };
 
-  const prevMonth = new Date(start.getFullYear(), start.getMonth() - 1, 1);
-  const lastDayPrev = new Date(start.getFullYear(), start.getMonth(), 0);
+  // Same day-of-month, one month earlier. Clamp to last day of previous month if needed.
+  const shift = (d: Date) => {
+    const y = d.getFullYear();
+    const m = d.getMonth() - 1;
+    const day = d.getDate();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const safeDay = Math.min(day, lastDay);
+    const result = new Date(y, m, safeDay);
+    const yy = result.getFullYear();
+    const mm = String(result.getMonth() + 1).padStart(2, '0');
+    const dd = String(result.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  };
 
   return {
-    compDataInicio: prevMonth.toISOString().split('T')[0],
-    compDataFim: lastDayPrev.toISOString().split('T')[0],
+    compDataInicio: shift(start),
+    compDataFim: shift(end),
   };
 }
 

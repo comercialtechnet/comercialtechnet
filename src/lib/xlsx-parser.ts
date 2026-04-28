@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+// Import dinâmico do XLSX dentro do parseXLSX para que o bundle pesado (~400 KB)
+// só seja baixado quando o usuário realmente importar uma planilha.
 import { Venda, ItemVenda } from './types';
 
 function parseDate(val: unknown): string {
@@ -253,7 +254,9 @@ function extractEmpresaVenda(fileName: string): string {
   return '';
 }
 
-export function parseXLSX(file: File): Promise<ParseResult> {
+export async function parseXLSX(file: File): Promise<ParseResult> {
+  // Carrega o módulo XLSX sob demanda (~400 KB) — chunk separado (vendor-xlsx).
+  const XLSX = await import('xlsx');
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {

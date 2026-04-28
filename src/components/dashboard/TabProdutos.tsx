@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useFilteredData } from '@/lib/use-filtered-data';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { ChevronDown } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const themedTooltip = {
   contentStyle: {
@@ -29,6 +32,9 @@ const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 
 export function TabProdutos() {
   const { stats, filteredItens, compStats, hasComparison } = useFilteredData();
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const tooltipTrigger: 'click' | 'hover' = isMobile ? 'click' : 'hover';
 
   const detalhesPorCategoria = (() => {
     const grouped: Record<string, Record<string, { count: number; fat: number }>> = {};
@@ -109,33 +115,47 @@ export function TabProdutos() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-        {catData.map(cat => (
-          <div key={cat.name} className="relative group bg-card rounded-lg border border-border p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cat.name] || '#94a3b8' }} />
-              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">{cat.name}</span>
-            </div>
-            <p className="text-base sm:text-lg font-bold text-foreground tabular-nums">{cat.quantidade}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground tabular-nums">{fmt(cat.faturamento)}</p>
-            <p className="text-[10px] sm:text-xs text-primary tabular-nums">{totalFat > 0 ? ((cat.faturamento / totalFat) * 100).toFixed(1) : 0}%</p>
+        {catData.map(cat => {
+          const isOpen = openCategory === cat.name;
+          const hasDetails = cat.detalhes.length > 0;
+          return (
+            <div key={cat.name} className="relative">
+              <button
+                onClick={() => hasDetails && setOpenCategory(prev => prev === cat.name ? null : cat.name)}
+                className={`w-full text-left bg-card rounded-lg border p-3 sm:p-4 transition-all ${isOpen ? 'border-primary shadow-md' : 'border-border'} ${hasDetails ? 'active:scale-[0.98] hover:border-primary/40' : ''}`}
+                aria-expanded={isOpen}
+                disabled={!hasDetails}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cat.name] || '#94a3b8' }} />
+                  <span className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate flex-1">{cat.name}</span>
+                  {hasDetails && (
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </div>
+                <p className="text-base sm:text-lg font-bold text-foreground tabular-nums">{cat.quantidade}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground tabular-nums truncate">{fmt(cat.faturamento)}</p>
+                <p className="text-[10px] sm:text-xs text-primary tabular-nums">{totalFat > 0 ? ((cat.faturamento / totalFat) * 100).toFixed(1) : 0}%</p>
+              </button>
 
-            {cat.detalhes.length > 0 && (
-              <div className="pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity absolute left-0 right-0 top-full mt-1 z-20">
-                <div className="bg-popover text-popover-foreground border border-border rounded-md shadow-lg p-2">
-                  <p className="text-[10px] sm:text-xs font-semibold mb-2">Tipos de produtos em {cat.name}</p>
-                  <div className="max-h-44 overflow-y-auto pr-1 space-y-1">
-                    {cat.detalhes.map(([nome, data]) => (
-                      <div key={`${cat.name}-${nome}`} className="flex items-center justify-between gap-2 text-[10px] sm:text-xs">
-                        <span className="truncate">{nome}</span>
-                        <span className="text-muted-foreground tabular-nums shrink-0">{data.count} • {fmt(data.fat)}</span>
-                      </div>
-                    ))}
+              {hasDetails && isOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-20">
+                  <div className="bg-popover text-popover-foreground border border-border rounded-md shadow-xl p-2">
+                    <p className="text-[10px] sm:text-xs font-semibold mb-2 px-1">Itens em {cat.name}</p>
+                    <div className="max-h-56 overflow-y-auto pr-1 space-y-1">
+                      {cat.detalhes.map(([nome, data]) => (
+                        <div key={`${cat.name}-${nome}`} className="flex items-center justify-between gap-2 text-[10px] sm:text-xs px-1 py-1 rounded hover:bg-accent/50">
+                          <span className="truncate">{nome}</span>
+                          <span className="text-muted-foreground tabular-nums shrink-0">{data.count} • {fmt(data.fat)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -145,7 +165,7 @@ export function TabProdutos() {
             <BarChart data={catData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
               <XAxis dataKey="name" tick={{ fontSize: 8 }} angle={-35} textAnchor="end" height={80} interval={0} />
               <YAxis tick={{ fontSize: 10 }} width={30} />
-              <Tooltip {...themedTooltip} labelFormatter={(label) => label} />
+              <Tooltip {...themedTooltip} trigger={tooltipTrigger} labelFormatter={(label) => label} />
               {hasComparison && compStats && (
                 <Bar dataKey="compQuantidade" name="Período anterior" radius={[4, 4, 0, 0]} opacity={0.3}>
                   {catData.map(entry => (

@@ -86,7 +86,7 @@ interface ColFilters {
 const emptyColFilters: ColFilters = { data: '', contrato: '', cliente: '', vendedor: '', supervisor: '', tipo: '' };
 
 export function TabAnalise() {
-  const { filteredVendas } = useFilteredData();
+  const { globalFilteredVendas: filteredVendas } = useFilteredData();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [selectedVenda, setSelectedVenda] = useState<Venda | null>(null);

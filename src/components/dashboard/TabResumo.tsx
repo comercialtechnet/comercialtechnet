@@ -5,6 +5,7 @@ import { formatPeriodLabel } from '@/lib/monthly-goals';
 import { KPICard } from './KPICard';
 import { DollarSign, ShoppingCart, Package, Layers, Receipt, Users, UserCheck, Wifi } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LabelList } from 'recharts';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const COLORS_LIST = ['hsl(217,91%,60%)', 'hsl(271,91%,65%)', 'hsl(347,77%,50%)', 'hsl(38,92%,50%)', 'hsl(160,84%,39%)', 'hsl(199,89%,48%)', 'hsl(215,16%,47%)'];
 
@@ -38,6 +39,8 @@ export function TabResumo() {
   const { stats, compStats, hasComparison } = useFilteredData();
   const { filters } = useFilters();
   const [activeCategoryName, setActiveCategoryName] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const tooltipTrigger: 'click' | 'hover' = isMobile ? 'click' : 'hover';
 
   const currentLabel = formatPeriodLabel(filters.dataInicio) || 'Atual';
   const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
@@ -73,7 +76,7 @@ export function TabResumo() {
         <p className="text-xs sm:text-sm text-muted-foreground">Visão executiva do período selecionado</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <KPICard
           title="Faturamento"
           value={fmt(stats.faturamento)}
@@ -134,10 +137,10 @@ export function TabResumo() {
         <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">Faturamento por Categoria</h3>
           <ResponsiveContainer width="100%" height={Math.max(220, catData.length * 40)}>
-            <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 80, left: 5, bottom: 5 }}>
-              <XAxis type="number" tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-              <Tooltip {...themedTooltip} labelFormatter={(label) => label} formatter={(v: number, name: string) => [fmt(v), name === 'Período anterior' ? compLabel : currentLabel]} />
+            <BarChart data={catData} layout="vertical" margin={{ top: 5, right: 60, left: 5, bottom: 5 }}>
+              <XAxis type="number" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9 }} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
+              <Tooltip {...themedTooltip} trigger={tooltipTrigger} labelFormatter={(label) => label} formatter={(v: number, name: string) => [fmt(v), name === 'Período anterior' ? compLabel : currentLabel]} />
               {hasComparison && compStats && (
                 <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3}>
                   {catData.map((entry) => (
@@ -155,14 +158,15 @@ export function TabResumo() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-card rounded-lg border border-border p-3 sm:p-5">
+        <div className="bg-card rounded-lg border border-border p-3 sm:p-5 min-w-0 overflow-hidden">
           <h3 className="text-sm font-semibold text-foreground mb-4">Top Categorias (Quantidade)</h3>
-          <div className={hasComparison && compTopCategoryData.length > 0 ? 'grid grid-cols-2 gap-2' : ''}>
-            <div>
+          <div className={hasComparison && compTopCategoryData.length > 0 ? 'grid grid-cols-1 sm:grid-cols-2 gap-2' : ''}>
+            <div className="min-w-0">
               {hasComparison && compTopCategoryData.length > 0 && (
                 <p className="text-[10px] font-medium text-center text-primary mb-1">Atual</p>
               )}
-              <ResponsiveContainer width="100%" height={hasComparison ? 180 : 200}>
+              <div className="w-full" style={{ height: hasComparison ? 180 : 200 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={topCategoryData}
@@ -170,8 +174,11 @@ export function TabResumo() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={hasComparison ? 55 : 70}
-                    innerRadius={hasComparison ? 25 : 30}
+                    outerRadius="78%"
+                    innerRadius="44%"
+                    paddingAngle={3}
+                    stroke="#ffffff"
+                    strokeWidth={3}
                     onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
                   >
                     {topCategoryData.map((d, i) => (
@@ -183,9 +190,10 @@ export function TabResumo() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
+                  <Tooltip trigger={tooltipTrigger} contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
                 </PieChart>
               </ResponsiveContainer>
+              </div>
               <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
                 {topCategoryData.map((d, i) => {
                   const total = topCategoryData.reduce((s, x) => s + x.value, 0);
@@ -206,9 +214,10 @@ export function TabResumo() {
               </div>
             </div>
             {hasComparison && compTopCategoryData.length > 0 && (
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-medium text-center text-muted-foreground mb-1">Anterior</p>
-                <ResponsiveContainer width="100%" height={180}>
+                <div className="w-full" style={{ height: 180 }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={compTopCategoryData}
@@ -216,8 +225,11 @@ export function TabResumo() {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={55}
-                      innerRadius={25}
+                      outerRadius="78%"
+                      innerRadius="44%"
+                      paddingAngle={3}
+                      stroke="#ffffff"
+                      strokeWidth={3}
                       onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
                     >
                       {compTopCategoryData.map((d, i) => (
@@ -229,9 +241,10 @@ export function TabResumo() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
+                    <Tooltip trigger={tooltipTrigger} contentStyle={themedTooltip.contentStyle} itemStyle={themedTooltip.itemStyle} />
                   </PieChart>
                 </ResponsiveContainer>
+                </div>
                 <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
                   {compTopCategoryData.map((d, i) => {
                     const total = compTopCategoryData.reduce((s, x) => s + x.value, 0);

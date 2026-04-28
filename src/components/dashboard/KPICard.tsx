@@ -19,40 +19,38 @@ export function KPICard({ title, value, subtitle, icon: Icon, trend, compValue, 
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="kpi-card"
+      className="kpi-card p-3 sm:p-5 min-h-[100px] sm:min-h-[120px] flex flex-col justify-between"
     >
-      <div className="flex items-start justify-between mb-2 sm:mb-3">
-        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider leading-tight">{title}</span>
-        <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-lg bg-surface flex items-center justify-center shrink-0">
-          <Icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider leading-tight line-clamp-2">{title}</span>
+        <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
         </div>
       </div>
-      <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground tracking-tighter tabular-nums">{value}</p>
-      <div className="flex flex-col gap-0.5 mt-1">
-        {subtitle && <span className="text-[10px] sm:text-xs text-muted-foreground">{subtitle}</span>}
-        {compValue && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] sm:text-xs text-muted-foreground tabular-nums">
-              Ant: {compValue}
-            </span>
-            {hasTrend && (
-              <span className={`text-[10px] sm:text-xs font-semibold tabular-nums ${
-                compTrend > 0 ? 'text-success' : compTrend < 0 ? 'text-destructive' : 'text-muted-foreground'
-              }`}>
-                {compTrend > 0 ? '+' : ''}{compTrend.toFixed(1)}%
+      <div className="mt-2">
+        <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground tracking-tight tabular-nums leading-none break-words">{value}</p>
+        <div className="flex flex-col gap-0.5 mt-1.5">
+          {subtitle && <span className="text-[10px] sm:text-xs text-muted-foreground">{subtitle}</span>}
+          {compValue && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {hasTrend && (
+                <span className={`inline-flex items-center text-[10px] sm:text-xs font-semibold tabular-nums px-1.5 py-0.5 rounded-md ${
+                  compTrend > 0 ? 'text-success bg-success/10' : compTrend < 0 ? 'text-destructive bg-destructive/10' : 'text-muted-foreground bg-muted'
+                }`}>
+                  {compTrend > 0 ? '↑' : compTrend < 0 ? '↓' : '–'} {Math.abs(compTrend).toFixed(1)}%
+                </span>
+              )}
+              <span className="text-[10px] sm:text-xs text-muted-foreground tabular-nums truncate">
+                vs {compValue}
               </span>
-            )}
-            {compTrend === undefined && compValue && (
-              <span className="text-[10px] sm:text-xs text-muted-foreground">N/A</span>
-            )}
-          </div>
-        )}
-        {/* Legacy trend support */}
-        {trend !== undefined && !compValue && (
-          <span className={`text-[10px] sm:text-xs font-medium ${trend >= 0 ? 'text-success' : 'text-destructive'}`}>
-            {trend >= 0 ? '+' : ''}{trend.toFixed(1)}%
-          </span>
-        )}
+            </div>
+          )}
+          {trend !== undefined && !compValue && (
+            <span className={`text-[10px] sm:text-xs font-medium ${trend >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {trend >= 0 ? '+' : ''}{trend.toFixed(1)}%
+            </span>
+          )}
+        </div>
       </div>
     </motion.div>
   );

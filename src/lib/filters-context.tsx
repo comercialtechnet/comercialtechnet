@@ -116,6 +116,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   });
   const compManualRef = useRef(false);
   const hasLoadedRef = useRef(false);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const reloadFromDatabase = useCallback(async (): Promise<boolean> => {
     setIsLoadingFromDB(true);
@@ -171,17 +172,19 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
           erros: [],
         });
 
-        const { dataInicio, dataFim } = getCurrentMonthDateRange();
-
         setFilters(prev => ({
           ...prev,
-          dataInicio,
-          dataFim,
+          dataInicio: prev.dataInicio || defaultFilters.dataInicio,
+          dataFim: prev.dataFim || defaultFilters.dataFim,
         }));
       } else {
         setImportedData(null);
-        const { dataInicio, dataFim } = getCurrentMonthDateRange();
-        setFilters(prev => ({ ...prev, ...emptyFiltersBase, dataInicio, dataFim }));
+        setFilters(prev => ({
+          ...prev,
+          ...emptyFiltersBase,
+          dataInicio: prev.dataInicio || defaultFilters.dataInicio,
+          dataFim: prev.dataFim || defaultFilters.dataFim,
+        }));
       }
 
       if (Object.keys(dbMetas).length > 0) {
@@ -203,14 +206,24 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   // Esperar sessão estar pronta antes de carregar dados
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Sempre recarregar no SIGNED_IN (sessão pode ter sido restaurada após o primeiro try falhar)
-        if (!hasLoadedRef.current) {
+      if (event === 'SIGNED_IN') {
+        const newUserId = session?.user?.id || null;
+        // Recarregar se nunca carregou OU se mudou de usuário
+        if (!hasLoadedRef.current || currentUserIdRef.current !== newUserId) {
           hasLoadedRef.current = true;
+          currentUserIdRef.current = newUserId;
+          // Limpar estado da sessão anterior antes de recarregar
+          setImportedData(null);
+          setUserInfo(null);
+          setFilters(buildDefaultFilters());
+          setActiveTab('resumo');
           void reloadFromDatabase();
         }
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Token só refresca; não recarregar
       } else if (event === 'SIGNED_OUT') {
         hasLoadedRef.current = false;
+        currentUserIdRef.current = null;
         setImportedData(null);
         setUserInfo(null);
         setFilters(buildDefaultFilters());
@@ -220,9 +233,14 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     });
 
     // Tentar carregar imediatamente (sessão pode já existir no localStorage)
-    void reloadFromDatabase().then((success) => {
-      if (success) hasLoadedRef.current = true;
-      // Se falhou (sem sessão), NÃO marcar — deixar o SIGNED_IN lidar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        currentUserIdRef.current = session.user.id;
+        hasLoadedRef.current = true;
+        void reloadFromDatabase();
+      } else {
+        setIsLoadingFromDB(false);
+      }
     });
 
     return () => {
@@ -237,17 +255,16 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
 
   // Auto-set comparison dates when main dates change
   useEffect(() => {
-    if (compManualRef.current) {
-      compManualRef.current = false;
-      return;
-    }
-    if (filters.dataInicio) {
-      const { compDataInicio, compDataFim } = getDefaultComparisonDates(filters.dataInicio, filters.dataFim);
-      setFilters(prev => {
-        if (prev.compDataInicio === compDataInicio && prev.compDataFim === compDataFim) return prev;
-        return { ...prev, compDataInicio, compDataFim };
-      });
-    }
+    // Only auto-update comparison dates if user already enabled comparison
+    // AND has not made a manual edit. Comparison is OFF by default.
+    if (compManualRef.current) return;
+    if (!filters.compDataInicio && !filters.compDataFim) return; // disabled
+    if (!filters.dataInicio) return;
+    const { compDataInicio, compDataFim } = getDefaultComparisonDates(filters.dataInicio, filters.dataFim);
+    setFilters(prev => {
+      if (prev.compDataInicio === compDataInicio && prev.compDataFim === compDataFim) return prev;
+      return { ...prev, compDataInicio, compDataFim };
+    });
   }, [filters.dataInicio, filters.dataFim]);
 
   const resetFilters = () => {
@@ -260,7 +277,13 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       const next = typeof action === 'function' ? action(prev) : action;
       if (next.compDataInicio !== prev.compDataInicio || next.compDataFim !== prev.compDataFim) {
         const auto = getDefaultComparisonDates(next.dataInicio, next.dataFim);
-        if (next.compDataInicio !== auto.compDataInicio || next.compDataFim !== auto.compDataFim) {
+        const isCleared = !next.compDataInicio && !next.compDataFim;
+        const matchesAuto = next.compDataInicio === auto.compDataInicio && next.compDataFim === auto.compDataFim;
+        if (isCleared || matchesAuto) {
+          // turning off OR resetting to auto = back to automatic mode
+          compManualRef.current = false;
+        } else {
+          // user-edited custom comparison range
           compManualRef.current = true;
         }
       }

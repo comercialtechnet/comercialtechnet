@@ -47,11 +47,27 @@ const PERFIL_OPTIONS = [
 ];
 
 export function TabAdmin() {
+  const { userInfo: _u } = useFilters();
+  if (_u && _u.perfil !== 'administrador') {
+    return (
+      <div className="bg-card rounded-lg border border-border p-6 sm:p-8 text-center">
+        <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+        <h3 className="text-sm font-semibold text-foreground mb-2">Acesso restrito</h3>
+        <p className="text-xs text-muted-foreground max-w-md mx-auto">
+          Esta área é exclusiva para administradores.
+        </p>
+      </div>
+    );
+  }
+  return <TabAdminInner />;
+}
+
+function TabAdminInner() {
   const [users, setUsers] = useState<ProfileUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [resetDialog, setResetDialog] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
-  const { monthlyGoals, setMonthlyGoals, importedData } = useFilters();
+  const { monthlyGoals, setMonthlyGoals, importedData, userInfo } = useFilters();
 
   const [editingGoals, setEditingGoals] = useState<Record<string, MonthlyGoal>>({});
   const [isEditingGoals, setIsEditingGoals] = useState(false);

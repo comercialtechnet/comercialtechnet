@@ -11,28 +11,42 @@ type MetricKey = 'faturamento' | 'vendas' | 'produtos' | 'combos';
 const PAGE_SIZE = 10;
 
 export function TabRanking() {
-  const { stats } = useFilteredData();
+  const { globalStats: stats, rankingBaseStats } = useFilteredData();
   const [metric, setMetric] = useState<MetricKey>('faturamento');
   const [page, setPage] = useState(0);
   const [supPage, setSupPage] = useState(0);
 
-  const ranking = Object.entries(stats.porVendedor)
+  // Posições reais calculadas SEM filtros de vendedor/supervisor
+  // para preservar o ranking quando filtrar por equipe/vendedor específico.
+  const fullRanking = Object.entries(rankingBaseStats.porVendedor)
     .map(([nome, data]) => ({ nome, ...data }))
     .sort((a, b) => b[metric] - a[metric]);
+  const positionByVendedor = new Map(fullRanking.map((v, i) => [v.nome, i]));
+
+  const visibleVendedores = new Set(Object.keys(stats.porVendedor));
+  const ranking = fullRanking
+    .filter(v => visibleVendedores.has(v.nome))
+    .map(v => ({ ...v, realIndex: positionByVendedor.get(v.nome) ?? 0 }));
 
   const totalPages = Math.max(1, Math.ceil(ranking.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
   const pagedRanking = ranking.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   const globalOffset = currentPage * PAGE_SIZE;
 
-  const maxVal = ranking[0]?.[metric] || 1;
+  const maxVal = fullRanking[0]?.[metric] || 1;
   const trophyIcons = [Trophy, Medal, Award];
 
-  const rankingSup = Object.entries(stats.porSupervisor)
+  const fullRankingSup = Object.entries(rankingBaseStats.porSupervisor)
     .map(([nome, data]) => ({ nome, faturamento: data.faturamento, vendas: data.vendas, produtos: data.produtos, combos: data.combos, numVendedores: data.vendedores.size }))
     .sort((a, b) => b[metric] - a[metric]);
+  const positionBySupervisor = new Map(fullRankingSup.map((s, i) => [s.nome, i]));
 
-  const maxValSup = rankingSup[0]?.[metric] || 1;
+  const visibleSupervisores = new Set(Object.keys(stats.porSupervisor));
+  const rankingSup = fullRankingSup
+    .filter(s => visibleSupervisores.has(s.nome))
+    .map(s => ({ ...s, realIndex: positionBySupervisor.get(s.nome) ?? 0 }));
+
+  const maxValSup = fullRankingSup[0]?.[metric] || 1;
   const totalSupPages = Math.max(1, Math.ceil(rankingSup.length / PAGE_SIZE));
   const currentSupPage = Math.min(supPage, totalSupPages - 1);
   const pagedRankingSup = rankingSup.slice(currentSupPage * PAGE_SIZE, (currentSupPage + 1) * PAGE_SIZE);
@@ -70,7 +84,7 @@ export function TabRanking() {
           <h3 className="text-sm font-semibold text-foreground mb-4">Ranking de Vendedores</h3>
           <div className="space-y-2.5 sm:space-y-3">
             {pagedRanking.map((v, i) => {
-              const globalIndex = globalOffset + i;
+              const globalIndex = v.realIndex;
               const Icon = globalIndex < 3 ? trophyIcons[globalIndex] : null;
               return (
                 <div key={v.nome} className="flex items-center gap-2 sm:gap-3">
@@ -111,7 +125,7 @@ export function TabRanking() {
           <h3 className="text-sm font-semibold text-foreground mb-4">Ranking de Supervisores</h3>
           <div className="space-y-2.5 sm:space-y-3">
             {pagedRankingSup.map((s, i) => {
-              const globalIndex = globalSupOffset + i;
+              const globalIndex = s.realIndex;
               const Icon = globalIndex < 3 ? trophyIcons[globalIndex] : null;
               return (
                 <div key={s.nome} className="flex items-center gap-2 sm:gap-3">
