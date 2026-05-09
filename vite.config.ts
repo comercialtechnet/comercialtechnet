@@ -9,9 +9,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Base necessária para o GitHub Pages: o site fica em /comercialtechnet/
-  // Sem isso, os assets são gerados com caminhos /assets/* e dão 404
-  base: '/comercialtechnet/',
+  // Lovable Preview/Hosting serve o app pela raiz; manter base em subpasta
+  // faz o preview procurar assets/rotas em /comercialtechnet/ e pode abrir em branco.
+  base: '/',
   server: {
     host: "::",
     port: 8080,
