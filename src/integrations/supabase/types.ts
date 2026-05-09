@@ -101,30 +101,36 @@ export type Database = {
         Row: {
           atualizado_em: string
           criado_em: string
+          empresa: string
           id: string
           meta_faturamento: number
-          meta_total_vendas: number
+          meta_faturamento_supervisor: number
           meta_vendas_virtua: number
+          meta_vendas_virtua_supervisor: number
           periodo_ano: number
           periodo_mes: number
         }
         Insert: {
           atualizado_em?: string
           criado_em?: string
+          empresa?: string
           id?: string
           meta_faturamento?: number
-          meta_total_vendas?: number
+          meta_faturamento_supervisor?: number
           meta_vendas_virtua?: number
+          meta_vendas_virtua_supervisor?: number
           periodo_ano: number
           periodo_mes: number
         }
         Update: {
           atualizado_em?: string
           criado_em?: string
+          empresa?: string
           id?: string
           meta_faturamento?: number
-          meta_total_vendas?: number
+          meta_faturamento_supervisor?: number
           meta_vendas_virtua?: number
+          meta_vendas_virtua_supervisor?: number
           periodo_ano?: number
           periodo_mes?: number
         }

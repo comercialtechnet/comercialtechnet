@@ -173,7 +173,7 @@ export function TabGraficos() {
                 paddingAngle={3}
                 stroke="#ffffff"
                 strokeWidth={3}
-                onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
+                onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)} animationDuration={1400} animationEasing="ease-out"
               >
                 {currentData.map((d, i) => (
                   <Cell
@@ -216,7 +216,7 @@ export function TabGraficos() {
                   paddingAngle={3}
                   stroke="#ffffff"
                   strokeWidth={3}
-                  onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)}
+                  onClick={(data) => setActivePieName(prev => prev === data.name ? null : data.name)} animationDuration={1400} animationEasing="ease-out"
                 >
                   {compData.map((d, i) => (
                     <Cell
@@ -289,14 +289,14 @@ export function TabGraficos() {
               />
               <Legend wrapperStyle={{ fontSize: 10 }} />
               {/* Vendas — eixo esquerdo */}
-              <Line yAxisId="left" type="monotone" dataKey="vendas" name={`Vendas (${currentLabel})`} stroke="hsl(347,77%,50%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(347,77%,50%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(347,77%,50%)', strokeWidth: 2.5 }} />
+              <Line yAxisId="left" type="monotone" dataKey="vendas" name={`Vendas (${currentLabel})`} stroke="hsl(347,77%,50%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(347,77%,50%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(347,77%,50%)', strokeWidth: 2.5 }}  animationDuration={1400} animationEasing="ease-out" />
               {hasComparison && (
-                <Line yAxisId="left" type="monotone" dataKey="compVendas" name={`Vendas (${compLabel})`} stroke="hsl(347,77%,75%)" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3, fill: '#ffffff', stroke: 'hsl(347,77%,75%)', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+                <Line yAxisId="left" type="monotone" dataKey="compVendas" name={`Vendas (${compLabel})`} stroke="hsl(347,77%,75%)" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3, fill: '#ffffff', stroke: 'hsl(347,77%,75%)', strokeWidth: 1.5 }} activeDot={{ r: 5 }}  animationDuration={1400} animationEasing="ease-out" />
               )}
               {/* Faturamento — eixo direito */}
-              <Line yAxisId="right" type="monotone" dataKey="faturamento" name={`Faturamento (${currentLabel})`} stroke="hsl(160,84%,39%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(160,84%,39%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(160,84%,39%)', strokeWidth: 2.5 }} />
+              <Line yAxisId="right" type="monotone" dataKey="faturamento" name={`Faturamento (${currentLabel})`} stroke="hsl(160,84%,39%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(160,84%,39%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(160,84%,39%)', strokeWidth: 2.5 }}  animationDuration={1400} animationEasing="ease-out" />
               {hasComparison && (
-                <Line yAxisId="right" type="monotone" dataKey="compFaturamento" name={`Faturamento (${compLabel})`} stroke="hsl(160,84%,65%)" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3, fill: '#ffffff', stroke: 'hsl(160,84%,65%)', strokeWidth: 1.5 }} activeDot={{ r: 5 }} />
+                <Line yAxisId="right" type="monotone" dataKey="compFaturamento" name={`Faturamento (${compLabel})`} stroke="hsl(160,84%,65%)" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3, fill: '#ffffff', stroke: 'hsl(160,84%,65%)', strokeWidth: 1.5 }} activeDot={{ r: 5 }}  animationDuration={1400} animationEasing="ease-out" />
               )}
             </LineChart>
           </ResponsiveContainer>
@@ -338,13 +338,13 @@ export function TabGraficos() {
                 }}
               />
               {hasComparison && (
-                <Bar dataKey="compVendas" name="compVendas" radius={[0, 4, 4, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2}>
+                <Bar dataKey="compVendas" name="compVendas" radius={[0, 4, 4, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2} animationDuration={1400} animationEasing="ease-out">
                   {empresaData.map((entry) => (
                     <Cell key={`comp-${entry.name}`} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
                   ))}
                 </Bar>
               )}
-              <Bar dataKey="vendas" name="vendas" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2}>
+              <Bar dataKey="vendas" name="vendas" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2} animationDuration={1400} animationEasing="ease-out">
                 {empresaData.map((entry) => (
                   <Cell key={entry.name} fill={EMPRESA_COLORS[entry.name] || 'hsl(215,16%,47%)'} />
                 ))}

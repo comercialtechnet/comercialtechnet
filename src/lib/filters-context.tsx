@@ -126,6 +126,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
+        console.warn('[Carga] Nenhuma sessão ativa encontrada; dados do dashboard não serão carregados agora.');
         setImportedData(null);
         // NÃO marcar como carregado — esperar o SIGNED_IN
         return false;
@@ -141,6 +142,9 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
         .single();
         
       const typedProfile = profile as ProfileWithBindings | null;
+      if (!typedProfile) {
+        console.error('[Carga] Perfil do usuário não encontrado ou sem permissão de leitura.', { userId: session.user.id });
+      }
       const userProfile = typedProfile ? {
         perfil: typedProfile.perfil || 'vendedor',
         nome_vinculado: typedProfile.nome_vinculado || session.user.email,
@@ -164,6 +168,14 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       setLoadingProgress({ step: 'Montando dashboard...', percent: 90 });
 
       if (dbData && dbData.vendas.length > 0) {
+        const loadedDates = dbData.vendas.map(v => v.data_instalacao).filter(Boolean).sort();
+        console.info('[Carga] Dados aplicados ao dashboard', {
+          vendas: dbData.vendas.length,
+          itens: dbData.itens.length,
+          primeiraData: loadedDates[0] ?? null,
+          ultimaData: loadedDates[loadedDates.length - 1] ?? null,
+          perfil: userProfile?.perfil ?? null,
+        });
         setImportedData({
           vendas: dbData.vendas,
           itens: dbData.itens,
@@ -178,6 +190,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
           dataFim: prev.dataFim || defaultFilters.dataFim,
         }));
       } else {
+        console.warn('[Carga] Nenhuma venda retornou do banco para o perfil atual.', { perfil: userProfile?.perfil ?? null, userProfile });
         setImportedData(null);
         setFilters(prev => ({
           ...prev,
@@ -194,7 +207,7 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
       setLoadingProgress({ step: 'Pronto!', percent: 100 });
       return true;
     } catch (err) {
-      console.warn('Não foi possível carregar dados do banco:', err);
+      console.error('[Carga] Erro crítico ao carregar dados do banco', err);
       // Use standard alert since sonner is not imported
       alert('Erro crítico ao carregar dados do banco: ' + (err instanceof Error ? err.message : String(err)));
       return false;

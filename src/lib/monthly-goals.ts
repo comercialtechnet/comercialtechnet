@@ -2,26 +2,83 @@ import { MonthlyGoal } from './types';
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
+export type Empresa = 'RDT' | 'VNA';
+export const EMPRESAS: Empresa[] = ['RDT', 'VNA'];
+
+export const DEFAULT_META_FATURAMENTO = 60000;
+export const DEFAULT_META_VIRTUA = 300;
+
 // No initial goals — everything comes from the database
 export const INITIAL_MONTHLY_GOALS: Record<string, MonthlyGoal> = {};
 
-const DEFAULT_GOAL: MonthlyGoal = {
-  meta_faturamento: 0,
-  meta_total_vendas: 0,
-  meta_vendas_virtua: 0,
-};
-
-export function getMonthlyGoalFromStore(goals: Record<string, MonthlyGoal>, dataInicio?: string): MonthlyGoal {
-  if (!dataInicio) return DEFAULT_GOAL;
-  const date = new Date(dataInicio + 'T00:00:00');
-  if (isNaN(date.getTime())) return DEFAULT_GOAL;
-  const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  return goals[key] || DEFAULT_GOAL;
+export interface AggregatedMonthlyGoal {
+  meta_faturamento: number;
+  meta_faturamento_supervisor: number;
+  meta_vendas_virtua: number;
+  meta_vendas_virtua_supervisor: number;
 }
 
-/** @deprecated Use getMonthlyGoalFromStore with context goals */
-export function getMonthlyGoal(dataInicio?: string): MonthlyGoal {
-  return getMonthlyGoalFromStore(INITIAL_MONTHLY_GOALS, dataInicio);
+const EMPTY_AGG: AggregatedMonthlyGoal = {
+  meta_faturamento: 0,
+  meta_faturamento_supervisor: 0,
+  meta_vendas_virtua: 0,
+  meta_vendas_virtua_supervisor: 0,
+};
+
+/** Returns a goal key in the form `YYYY-MM-EMPRESA`. */
+export function generateGoalKey(year: number, month: number, empresa: Empresa): string {
+  return `${year}-${String(month).padStart(2, '0')}-${empresa}`;
+}
+
+/** Parses `YYYY-MM-EMPRESA` into its parts. Returns null when malformed. */
+export function parseGoalKey(key: string): { year: number; month: number; empresa: Empresa; monthKey: string } | null {
+  const m = key.match(/^(\d{4})-(\d{2})-(RDT|VNA)$/);
+  if (!m) return null;
+  return {
+    year: parseInt(m[1], 10),
+    month: parseInt(m[2], 10),
+    empresa: m[3] as Empresa,
+    monthKey: `${m[1]}-${m[2]}`,
+  };
+}
+
+function getMonthKeyFromDate(dataInicio: string): string | null {
+  const date = new Date(dataInicio + 'T00:00:00');
+  if (isNaN(date.getTime())) return null;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Aggregates RDT + VNA goals for the month containing `dataInicio`.
+ * Returns zeroes when the date is missing or no goals exist.
+ */
+export function getMonthlyGoalFromStore(goals: Record<string, MonthlyGoal>, dataInicio?: string): AggregatedMonthlyGoal {
+  if (!dataInicio) return EMPTY_AGG;
+  const monthKey = getMonthKeyFromDate(dataInicio);
+  if (!monthKey) return EMPTY_AGG;
+
+  const agg: AggregatedMonthlyGoal = { ...EMPTY_AGG };
+  for (const empresa of EMPRESAS) {
+    const g = goals[`${monthKey}-${empresa}`];
+    if (!g) continue;
+    agg.meta_faturamento += Number(g.meta_faturamento) || 0;
+    agg.meta_faturamento_supervisor += Number(g.meta_faturamento_supervisor) || 0;
+    agg.meta_vendas_virtua += Number(g.meta_vendas_virtua) || 0;
+    agg.meta_vendas_virtua_supervisor += Number(g.meta_vendas_virtua_supervisor) || 0;
+  }
+  return agg;
+}
+
+/** Returns which empresas (RDT/VNA) are missing a goal for the given month. */
+export function getMissingEmpresasForMonth(goals: Record<string, MonthlyGoal>, year: number, month: number): Empresa[] {
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+  return EMPRESAS.filter(empresa => {
+    const g = goals[`${monthKey}-${empresa}`];
+    return !g || (
+      (Number(g.meta_faturamento) || 0) === 0 &&
+      (Number(g.meta_vendas_virtua) || 0) === 0
+    );
+  });
 }
 
 export function formatPeriodLabel(dateStr: string): string {
@@ -32,10 +89,14 @@ export function formatPeriodLabel(dateStr: string): string {
 }
 
 export function formatMonthKey(key: string): string {
-  const [year, month] = key.split('-');
+  // Accepts both `YYYY-MM` and `YYYY-MM-EMPRESA` keys.
+  const parts = key.split('-');
+  const [year, month] = parts;
+  const empresa = parts[2];
   const idx = parseInt(month, 10) - 1;
   if (idx < 0 || idx > 11) return key;
-  return `${MONTH_NAMES[idx]}/${year}`;
+  const base = `${MONTH_NAMES[idx]}/${year}`;
+  return empresa ? `${base} · ${empresa}` : base;
 }
 
 export function getDefaultComparisonDates(dataInicio: string, dataFim: string): { compDataInicio: string; compDataFim: string } {

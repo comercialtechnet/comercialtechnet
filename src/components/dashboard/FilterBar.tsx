@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useFilters } from '@/lib/filters-context';
 import { cleanString } from '@/lib/use-filtered-data';
+import { parseBindings } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X, Search, SlidersHorizontal, ChevronDown, ChevronUp, ArrowLeftRight, Calendar, Wand2, CalendarRange } from 'lucide-react';
@@ -93,6 +94,14 @@ export function FilterBar({ compact = false }: FilterBarProps) {
   const autoComp = useMemo(() => getDefaultComparisonDates(filters.dataInicio, filters.dataFim), [filters.dataInicio, filters.dataFim]);
   const isCompManual = showComp && (filters.compDataInicio !== autoComp.compDataInicio || filters.compDataFim !== autoComp.compDataFim);
 
+  const matchesOption = (selectedValue: string, ...rowValues: string[]) => {
+    const selectedClean = cleanString(selectedValue);
+    return rowValues.some(value => {
+      const valueClean = cleanString(value);
+      return valueClean === selectedClean || valueClean.includes(selectedClean) || selectedClean.includes(valueClean);
+    });
+  };
+
 
   // Pré-filtrar dados baseado no perfil do usuário (replicando a lógica de useFilteredData)
   const sourceVendas = useMemo(() => {
@@ -103,13 +112,15 @@ export function FilterBar({ compact = false }: FilterBarProps) {
     if (perfil === 'administrador') return allVendas;
 
     if (perfil === 'supervisor' && userInfo.nome_supervisor_vinculado) {
-      const supClean = cleanString(userInfo.nome_supervisor_vinculado);
+      const supNames = parseBindings(userInfo.nome_supervisor_vinculado).map(cleanString);
       return allVendas.filter(v => {
         const supField = cleanString(v.supervisor);
         const supNorm = cleanString(v.supervisor_normalizado);
-        return supField === supClean || supNorm === supClean
+        return supNames.some(supClean =>
+          supField === supClean || supNorm === supClean
           || supField.includes(supClean) || supClean.includes(supField)
-          || supNorm.includes(supClean) || supClean.includes(supNorm);
+          || supNorm.includes(supClean) || supClean.includes(supNorm)
+        );
       });
     }
 
@@ -130,10 +141,10 @@ export function FilterBar({ compact = false }: FilterBarProps) {
   const getAvailableOptions = useCallback((ignoreKey: string, extractor: (v: typeof sourceVendas[0]) => string) => {
     let list = sourceVendas;
     if (ignoreKey !== 'vendedor' && filters.vendedor.length > 0) {
-      list = list.filter(v => filters.vendedor.some(f => cleanString(f) === cleanString(v.vendedor_normalizado)));
+      list = list.filter(v => filters.vendedor.some(f => matchesOption(f, v.vendedor, v.vendedor_normalizado)));
     }
     if (ignoreKey !== 'supervisor' && filters.supervisor.length > 0) {
-      list = list.filter(v => filters.supervisor.some(f => cleanString(f) === cleanString(v.supervisor_normalizado)));
+      list = list.filter(v => filters.supervisor.some(f => matchesOption(f, v.supervisor, v.supervisor_normalizado)));
     }
     if (ignoreKey !== 'empresa' && filters.empresa.length > 0) {
       list = list.filter(v => filters.empresa.some(f => cleanString(f) === cleanString(String(v.empresa_venda))));

@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFilters } from './filters-context';
 import { Venda, ItemVenda, DashboardStats, DashboardFilters } from './types';
+import { parseBindings } from './utils';
 
 
 export function cleanString(s: string): string {
@@ -130,7 +131,10 @@ export function filterVendas(
   const dFim = dateOverride?.dataFim ?? filters.dataFim;
   let inicioKey = toDateKey(dInicio);
   let fimKey = toDateKey(dFim);
+  if (dInicio && inicioKey === null) console.error('[Filtros] Data inicial inválida', { dataInicio: dInicio });
+  if (dFim && fimKey === null) console.error('[Filtros] Data final inválida', { dataFim: dFim });
   if (inicioKey !== null && fimKey !== null && inicioKey > fimKey) {
+    console.warn('[Filtros] Período invertido detectado; aplicando intervalo corrigido', { dataInicio: dInicio, dataFim: dFim });
     [inicioKey, fimKey] = [fimKey, inicioKey];
   }
 
@@ -253,16 +257,17 @@ export function useFilteredData() {
 
     // Supervisores veem apenas vendas da sua equipe
     if (perfil === 'supervisor' && userInfo.nome_supervisor_vinculado) {
-      const supClean = cleanString(userInfo.nome_supervisor_vinculado);
+      const supNames = parseBindings(userInfo.nome_supervisor_vinculado).map(cleanString);
       const filtered = allVendas.filter(v => {
         const supField = cleanString(v.supervisor);
         const supNorm = cleanString(v.supervisor_normalizado);
-        // Comparação exata primeiro, fallback para includes
-        return supField === supClean || supNorm === supClean
+        return supNames.some(supClean =>
+          supField === supClean || supNorm === supClean
           || supField.includes(supClean) || supClean.includes(supField)
-          || supNorm.includes(supClean) || supClean.includes(supNorm);
+          || supNorm.includes(supClean) || supClean.includes(supNorm)
+        );
       });
-      console.log(`[Filtro Perfil] Supervisor "${userInfo.nome_supervisor_vinculado}" (clean: "${supClean}") => ${filtered.length}/${allVendas.length} vendas`);
+      console.log(`[Filtro Perfil] Supervisor(es) "${userInfo.nome_supervisor_vinculado}" => ${filtered.length}/${allVendas.length} vendas`);
       return filtered;
     }
 
@@ -294,6 +299,36 @@ export function useFilteredData() {
   const filteredVendas = useMemo(() => {
     return filterVendas(sourceVendas, sourceItens, filters);
   }, [filters, sourceVendas, sourceItens]);
+
+  useEffect(() => {
+    if (!importedData) return;
+    const allDates = sourceVendas.map(v => v.data_instalacao).filter(Boolean).sort();
+    const periodDates = sourceVendas
+      .filter(v => {
+        const k = toDateKey(v.data_instalacao);
+        const ini = toDateKey(filters.dataInicio);
+        const fim = toDateKey(filters.dataFim);
+        return k !== null && (ini === null || k >= ini) && (fim === null || k <= fim);
+      })
+      .map(v => v.data_instalacao)
+      .sort();
+    if (sourceVendas.length > 0 && periodDates.length === 0) {
+      console.warn('[Filtros] O período selecionado não encontrou vendas no conjunto carregado', {
+        periodoSelecionado: { de: filters.dataInicio, ate: filters.dataFim },
+        primeiraDataDisponivel: allDates[0] ?? null,
+        ultimaDataDisponivel: allDates[allDates.length - 1] ?? null,
+        totalCarregadoAposPerfil: sourceVendas.length,
+        perfil: userInfo?.perfil,
+      });
+    } else if (periodDates.length > 0 && filteredVendas.length === 0) {
+      console.warn('[Filtros] Existem vendas no período, mas outros filtros zeraram o resultado', {
+        vendasNoPeriodo: periodDates.length,
+        filtrosAtivos: filters,
+        primeiraDataNoPeriodo: periodDates[0],
+        ultimaDataNoPeriodo: periodDates[periodDates.length - 1],
+      });
+    }
+  }, [filters, filteredVendas.length, importedData, sourceVendas, userInfo?.perfil]);
 
   const filteredItens = useMemo(() => {
     const vendaIds = new Set(filteredVendas.map(v => v.id));

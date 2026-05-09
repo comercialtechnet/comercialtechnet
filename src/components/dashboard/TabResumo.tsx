@@ -131,13 +131,13 @@ export function TabResumo() {
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
               <Tooltip {...chartTooltip} trigger={tooltipTrigger} labelFormatter={(label) => titleCase(label)} formatter={(v: number, name: string) => [fmt(v), name === 'Período anterior' ? compLabel : currentLabel]} />
               {hasComparison && compStats && (
-                <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2}>
+                <Bar dataKey="compFaturamento" name="Período anterior" radius={[0, 4, 4, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2} animationDuration={1400} animationEasing="ease-out">
                   {catData.map((entry) => (
                     <Cell key={`comp-${entry.name}`} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                   ))}
                 </Bar>
               )}
-              <Bar dataKey="faturamento" name="Período atual" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2}>
+              <Bar dataKey="faturamento" name="Período atual" radius={[0, 4, 4, 0]} stroke="#ffffff" strokeWidth={2} animationDuration={1400} animationEasing="ease-out">
                 {catData.map((entry) => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}
@@ -168,7 +168,7 @@ export function TabResumo() {
                       paddingAngle={3}
                       stroke="#ffffff"
                       strokeWidth={3}
-                      onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
+                      onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)} animationDuration={1400} animationEasing="ease-out"
                     >
                       {topCategoryData.map((d, i) => (
                         <Cell
@@ -219,7 +219,7 @@ export function TabResumo() {
                         paddingAngle={3}
                         stroke="#ffffff"
                         strokeWidth={3}
-                        onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)}
+                        onClick={(data) => setActiveCategoryName(prev => prev === data.name ? null : data.name)} animationDuration={1400} animationEasing="ease-out"
                       >
                         {compTopCategoryData.map((d, i) => (
                           <Cell

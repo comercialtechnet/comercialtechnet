@@ -14,10 +14,8 @@ export function TabKPIs() {
   const goals = getMonthlyGoalFromStore(monthlyGoals, filters.dataInicio);
 
   const atingFat = goals.meta_faturamento > 0 ? (stats.faturamento / goals.meta_faturamento) * 100 : 0;
-  const atingVendas = goals.meta_total_vendas > 0 ? (stats.totalVendas / goals.meta_total_vendas) * 100 : 0;
   const atingVirtua = goals.meta_vendas_virtua > 0 ? (stats.vendasInternet / goals.meta_vendas_virtua) * 100 : 0;
   const faltaFat = Math.max(0, goals.meta_faturamento - stats.faturamento);
-  const faltaVendas = Math.max(0, goals.meta_total_vendas - stats.totalVendas);
   const faltaVirtua = Math.max(0, goals.meta_vendas_virtua - stats.vendasInternet);
 
   return (
@@ -79,7 +77,7 @@ export function TabKPIs() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Meta de Faturamento */}
         <div className="bg-card rounded-lg border border-border p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -92,40 +90,21 @@ export function TabKPIs() {
               <span className="font-semibold text-foreground tabular-nums">{fmt(stats.faturamento)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Meta</span>
+              <span className="text-muted-foreground">Meta (RDT + VNA)</span>
               <span className="font-semibold text-foreground tabular-nums">{fmt(goals.meta_faturamento)}</span>
             </div>
+            {goals.meta_faturamento_supervisor > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Meta por supervisor</span>
+                <span className="font-medium text-foreground tabular-nums">{fmt(goals.meta_faturamento_supervisor)}</span>
+              </div>
+            )}
             <div className="ranking-bar">
               <div className="ranking-bar-fill" style={{ width: `${Math.min(atingFat, 100)}%` }} />
             </div>
             <div className="flex justify-between text-xs">
               <span className="font-medium text-primary tabular-nums">{atingFat.toFixed(1)}% atingido</span>
               <span className="text-muted-foreground tabular-nums">Faltam {fmt(faltaFat)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Meta de Vendas */}
-        <div className="bg-card rounded-lg border border-border p-4 sm:p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Target className="h-5 w-5 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Meta de Vendas</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Realizado</span>
-              <span className="font-semibold text-foreground tabular-nums">{fmtNum(stats.totalVendas)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Meta</span>
-              <span className="font-semibold text-foreground tabular-nums">{fmtNum(goals.meta_total_vendas)}</span>
-            </div>
-            <div className="ranking-bar">
-              <div className="ranking-bar-fill" style={{ width: `${Math.min(atingVendas, 100)}%` }} />
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="font-medium text-primary tabular-nums">{atingVendas.toFixed(1)}% atingido</span>
-              <span className="text-muted-foreground tabular-nums">Faltam {fmtNum(faltaVendas)}</span>
             </div>
           </div>
         </div>
@@ -142,9 +121,15 @@ export function TabKPIs() {
               <span className="font-semibold text-foreground tabular-nums">{fmtNum(stats.vendasInternet)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Meta</span>
+              <span className="text-muted-foreground">Meta (RDT + VNA)</span>
               <span className="font-semibold text-foreground tabular-nums">{fmtNum(goals.meta_vendas_virtua)}</span>
             </div>
+            {goals.meta_vendas_virtua_supervisor > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Meta por supervisor</span>
+                <span className="font-medium text-foreground tabular-nums">{fmtNum(goals.meta_vendas_virtua_supervisor)}</span>
+              </div>
+            )}
             <div className="ranking-bar">
               <div className="ranking-bar-fill" style={{ width: `${Math.min(atingVirtua, 100)}%` }} />
             </div>

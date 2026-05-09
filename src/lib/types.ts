@@ -64,9 +64,11 @@ export interface Importacao {
 }
 
 export interface MonthlyGoal {
+  empresa: 'RDT' | 'VNA';
   meta_faturamento: number;
-  meta_total_vendas: number;
+  meta_faturamento_supervisor: number;
   meta_vendas_virtua: number;
+  meta_vendas_virtua_supervisor: number;
 }
 
 export interface RegraClassificacao {

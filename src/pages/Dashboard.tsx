@@ -15,11 +15,12 @@ const TabSupervisao = lazy(() => import('@/components/dashboard/TabSupervisao').
 const TabAnalise    = lazy(() => import('@/components/dashboard/TabAnalise').then(m => ({ default: m.TabAnalise })));
 const TabAdmin      = lazy(() => import('@/components/dashboard/TabAdmin').then(m => ({ default: m.TabAdmin })));
 const ImportDialog  = lazy(() => import('@/components/dashboard/ImportDialog').then(m => ({ default: m.ImportDialog })));
+import { MetaReminderDialog } from '@/components/dashboard/MetaReminderDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/hooks/use-theme';
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 
 function PresentationSection({ index, label, children, total }: { index: number; label: string; children: React.ReactNode; total: number }) {
   const ref = useRef<HTMLElement | null>(null);
@@ -71,10 +72,9 @@ function PresentationSection({ index, label, children, total }: { index: number;
     };
   }, []);
 
-  const opacity = 0.25 + focus * 0.75;
-  const translateY = (1 - focus) * 14;
-  const scale = 0.96 + focus * 0.04;
-  const blur = (1 - focus) * 2.5;
+  const opacity = 0.4 + focus * 0.6;
+  const translateY = (1 - focus) * 10;
+  const scale = 0.985 + focus * 0.015;
   const isFocused = focus > 0.6;
 
   return (
@@ -86,8 +86,7 @@ function PresentationSection({ index, label, children, total }: { index: number;
       style={{
         opacity,
         transform: `translateY(${translateY}px) scale(${scale})`,
-        filter: `blur(${blur}px)`,
-        transition: 'opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 700ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        transition: 'opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1)',
       }}
       className="relative space-y-5 min-h-[70vh] pl-6 sm:pl-10"
     >
@@ -249,7 +248,7 @@ export default function Dashboard() {
   if (presentationMode) {
     const presentationTabs: DashboardTab[] = ['resumo', 'kpis', 'produtos', 'ranking', 'graficos'];
     return (
-      <div className="min-h-screen bg-surface relative overflow-hidden">
+      <div className="min-h-screen bg-surface relative overflow-x-hidden">
         {/* Animated background orbs */}
         <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
           <div
@@ -277,7 +276,7 @@ export default function Dashboard() {
 
         {/* Scroll progress bar no topo */}
         <motion.div
-          className="fixed top-0 left-0 right-0 h-[2px] z-50 origin-left"
+          className="fixed top-0 left-0 right-0 h-[2px] z-[90] origin-left"
           style={{
             background: 'linear-gradient(to right, hsl(var(--primary)), hsl(217 91% 60%), hsl(271 91% 65%))',
             scaleX: 0,
@@ -296,7 +295,7 @@ export default function Dashboard() {
         />
 
         {/* Header sticky minimalista com filtros recolhíveis */}
-        <div className="sticky top-0 z-40 bg-card/70 backdrop-blur-xl border-b border-border/50 shadow-sm">
+        <div className="fixed top-0 left-0 right-0 z-[80] bg-card/80 backdrop-blur-xl border-b border-border/50 shadow-sm">
           <div className="px-3 sm:px-6 h-11 flex items-center gap-2">
             <div className="flex items-center gap-2 shrink-0">
               <motion.div
@@ -343,7 +342,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <main className="relative z-10 px-3 sm:px-6 md:px-10 py-8 space-y-20 max-w-[1600px] mx-auto">
+        <main className="relative z-10 px-3 sm:px-6 md:px-10 pt-20 pb-8 space-y-20 max-w-[1600px] mx-auto">
           {presentationTabs.map((id, idx) => {
             const Comp = tabComponents[id];
             const label = tabs.find(t => t.id === id)?.label || id;
@@ -388,7 +387,7 @@ export default function Dashboard() {
                   <p className="text-[10px] text-muted-foreground truncate">
                     {userInfo.email}
                     {userInfo.perfil === 'supervisor' && userInfo.nome_supervisor_vinculado && (
-                      <span className="ml-1">· Equipe: <span className="text-foreground/80">{userInfo.nome_supervisor_vinculado}</span></span>
+                      <span className="ml-1">· Equipe: <span className="text-foreground/80">{userInfo.nome_supervisor_vinculado.split('||').map(s=>s.trim()).filter(Boolean).join(', ')}</span></span>
                     )}
                     {(userInfo.perfil === 'vendedor' || userInfo.perfil === 'consultor') && userInfo.nome_vendedor_vinculado && (
                       <span className="ml-1">· Vínculo: <span className="text-foreground/80">{userInfo.nome_vendedor_vinculado}</span></span>
@@ -559,6 +558,7 @@ export default function Dashboard() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <MetaReminderDialog onFillNow={() => setActiveTab('admin')} />
     </div>
   );
 }

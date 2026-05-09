@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import { chartTooltip, titleCase } from '@/lib/chart-tooltip';
+import { parseBindings } from '@/lib/utils';
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const PAGE_SIZE = 6;
@@ -32,6 +33,7 @@ export function TabSupervisao() {
   const isAdmin = userInfo?.perfil === 'administrador';
   const isSupervisor = userInfo?.perfil === 'supervisor';
   const supervisorVinculado = userInfo?.nome_supervisor_vinculado || null;
+  const supervisoresVinculados = parseBindings(supervisorVinculado);
 
   // Se é supervisor mas não tem vínculo, mostrar mensagem
   if (isSupervisor && !supervisorVinculado) {
@@ -86,8 +88,8 @@ export function TabSupervisao() {
     .sort((a, b) => b.faturamento - a.faturamento);
 
   // Filtrar: se é supervisor com vínculo, mostrar apenas sua equipe
-  const supervisores = isSupervisor && supervisorVinculado
-    ? allSupervisores.filter(s => s.nome === supervisorVinculado)
+  const supervisores = isSupervisor && supervisoresVinculados.length
+    ? allSupervisores.filter(s => supervisoresVinculados.includes(s.nome))
     : allSupervisores;
 
   // Paginação
@@ -243,7 +245,7 @@ export function TabSupervisao() {
                     labelFormatter={(label) => titleCase(label)}
                     formatter={(v: number) => [fmt(v), 'Faturamento']}
                   />
-                  <Bar dataKey="faturamento" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} stroke="#ffffff" strokeWidth={2} />
+                  <Bar dataKey="faturamento" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} stroke="#ffffff" strokeWidth={2}  animationDuration={1400} animationEasing="ease-out" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -254,7 +256,7 @@ export function TabSupervisao() {
             <div className="w-full" style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataCategorias} dataKey="qtd" nameKey="nome" cx="50%" cy="50%" innerRadius="40%" outerRadius="75%" paddingAngle={3} stroke="#ffffff" strokeWidth={3}>
+                  <Pie data={dataCategorias} dataKey="qtd" nameKey="nome" cx="50%" cy="50%" innerRadius="40%" outerRadius="75%" paddingAngle={3} stroke="#ffffff" strokeWidth={3} animationDuration={1400} animationEasing="ease-out">
                     {dataCategorias.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
@@ -288,8 +290,8 @@ export function TabSupervisao() {
                       formatter={(value: number, name: string) => name === 'Faturamento' ? [fmt(value), name] : [`${value} vendas`, name]}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line yAxisId="left" type="monotone" dataKey="vendas" name="Vendas" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(var(--primary))', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(var(--primary))', strokeWidth: 2.5 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="faturamento" name="Faturamento" stroke="hsl(160, 84%, 39%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(160, 84%, 39%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(160, 84%, 39%)', strokeWidth: 2.5 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="vendas" name="Vendas" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(var(--primary))', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(var(--primary))', strokeWidth: 2.5 }}  animationDuration={1400} animationEasing="ease-out" />
+                    <Line yAxisId="right" type="monotone" dataKey="faturamento" name="Faturamento" stroke="hsl(160, 84%, 39%)" strokeWidth={2.5} dot={{ r: 4, fill: '#ffffff', stroke: 'hsl(160, 84%, 39%)', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#ffffff', stroke: 'hsl(160, 84%, 39%)', strokeWidth: 2.5 }}  animationDuration={1400} animationEasing="ease-out" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -305,7 +307,7 @@ export function TabSupervisao() {
             <div className="w-full" style={{ height: 240 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={dataTipoVenda} dataKey="value" nameKey="nome" cx="50%" cy="50%" innerRadius="45%" outerRadius="78%" paddingAngle={4} stroke="#ffffff" strokeWidth={3}>
+                  <Pie data={dataTipoVenda} dataKey="value" nameKey="nome" cx="50%" cy="50%" innerRadius="45%" outerRadius="78%" paddingAngle={4} stroke="#ffffff" strokeWidth={3} animationDuration={1400} animationEasing="ease-out">
                     {dataTipoVenda.map((d, i) => (
                       <Cell key={d.nome} fill={d.nome === 'Upgrade' ? 'hsl(38, 92%, 50%)' : d.nome === 'Novas' ? 'hsl(var(--primary))' : COLORS[(i + 2) % COLORS.length]} />
                     ))}
@@ -384,7 +386,7 @@ export function TabSupervisao() {
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Supervisão</h2>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          {isSupervisor ? `Equipe de ${supervisorVinculado}` : `Visão por equipe e supervisor — ${supervisores.length} supervisores`}
+          {isSupervisor ? `Equipe de ${supervisoresVinculados.join(', ') || supervisorVinculado}` : `Visão por equipe e supervisor — ${supervisores.length} supervisores`}
         </p>
       </div>
 

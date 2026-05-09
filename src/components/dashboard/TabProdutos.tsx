@@ -156,13 +156,13 @@ export function TabProdutos() {
               <YAxis tick={{ fontSize: 10 }} width={30} />
               <Tooltip {...chartTooltip} trigger={tooltipTrigger} labelFormatter={(label) => titleCase(label)} formatter={(v: number, name: string) => [`${v} un.`, titleCase(name)]} />
               {hasComparison && compStats && (
-                <Bar dataKey="compQuantidade" name="Período anterior" radius={[4, 4, 0, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2}>
+                <Bar dataKey="compQuantidade" name="Período anterior" radius={[4, 4, 0, 0]} opacity={0.3} stroke="#ffffff" strokeWidth={2} animationDuration={1400} animationEasing="ease-out">
                   {catData.map(entry => (
                     <Cell key={`comp-${entry.name}`} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                   ))}
                 </Bar>
               )}
-              <Bar dataKey="quantidade" name="Período atual" radius={[4, 4, 0, 0]} stroke="#ffffff" strokeWidth={2}>
+              <Bar dataKey="quantidade" name="Período atual" radius={[4, 4, 0, 0]} stroke="#ffffff" strokeWidth={2} animationDuration={1400} animationEasing="ease-out">
                 {catData.map(entry => (
                   <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                 ))}

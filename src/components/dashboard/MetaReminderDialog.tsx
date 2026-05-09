@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Target, AlertTriangle } from 'lucide-react';
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 import { useFilters } from '@/lib/filters-context';
-import { generateMonthKey } from '@/lib/monthly-goals';
+import { generateMonthKey, getMissingEmpresasForMonth } from '@/lib/monthly-goals';
 
 const DISMISS_KEY = 'technet-meta-reminder-dismissed';
 
@@ -32,6 +32,16 @@ export function MetaReminderDialog({ onFillNow }: MetaReminderDialogProps) {
   const [open, setOpen] = useState(false);
   const { monthlyGoals, isLoadingFromDB } = useFilters();
 
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => generateMonthKey(now.getFullYear(), now.getMonth() + 1),
+    [now]
+  );
+  const missingEmpresas = useMemo(
+    () => getMissingEmpresasForMonth(monthlyGoals, now.getFullYear(), now.getMonth() + 1),
+    [monthlyGoals, now]
+  );
+
   useEffect(() => {
     if (isLoadingFromDB) return;
 
@@ -51,21 +61,12 @@ export function MetaReminderDialog({ onFillNow }: MetaReminderDialogProps) {
 
         if (!profile || profile.perfil !== 'administrador' || cancelled) return;
 
-        // 2. Check if current month's goal is missing
-        const now = new Date();
-        const currentMonthKey = generateMonthKey(now.getFullYear(), now.getMonth() + 1);
-        const currentGoal = monthlyGoals[currentMonthKey];
-
-        const hasGoal = currentGoal &&
-          (currentGoal.meta_faturamento > 0 ||
-           currentGoal.meta_total_vendas > 0 ||
-           currentGoal.meta_vendas_virtua > 0);
-
-        if (hasGoal) return;
+        // 2. Check if current month is missing any empresa goal (RDT or VNA)
+        if (missingEmpresas.length === 0) return;
 
         // 3. Check if user already dismissed for this month
         const dismissed = getDismissedMonth();
-        if (dismissed === currentMonthKey) return;
+        if (dismissed === `${currentMonthKey}:${missingEmpresas.join(',')}`) return;
 
         // 4. We are past day 1 of the month — show the reminder
         if (!cancelled) {
@@ -79,12 +80,10 @@ export function MetaReminderDialog({ onFillNow }: MetaReminderDialogProps) {
     check();
 
     return () => { cancelled = true; };
-  }, [monthlyGoals, isLoadingFromDB]);
+  }, [missingEmpresas, currentMonthKey, isLoadingFromDB]);
 
   const handleDismiss = () => {
-    const now = new Date();
-    const currentMonthKey = generateMonthKey(now.getFullYear(), now.getMonth() + 1);
-    setDismissedMonth(currentMonthKey);
+    setDismissedMonth(`${currentMonthKey}:${missingEmpresas.join(',')}`);
     setOpen(false);
   };
 
@@ -92,6 +91,10 @@ export function MetaReminderDialog({ onFillNow }: MetaReminderDialogProps) {
     setOpen(false);
     onFillNow();
   };
+
+  const empresasLabel = missingEmpresas.length === 2
+    ? 'RDT e VNA'
+    : missingEmpresas[0] ?? '';
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -104,7 +107,9 @@ export function MetaReminderDialog({ onFillNow }: MetaReminderDialogProps) {
             <DialogTitle className="text-foreground text-lg">Lembrete Importante</DialogTitle>
           </div>
           <DialogDescription className="text-sm text-muted-foreground leading-relaxed pt-1">
-            Ainda permanece pendente o preenchimento da meta desse mês!
+            {missingEmpresas.length > 0
+              ? `Ainda permanece pendente o preenchimento da meta de ${empresasLabel} deste mês!`
+              : 'Ainda permanece pendente o preenchimento da meta deste mês!'}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-2 pt-2">

@@ -6,12 +6,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserCheck, UserX, Shield, Key, Target, Plus, Trash2, Save, Loader2, ShieldCheck, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFilters } from '@/lib/filters-context';
-import { formatMonthKey, generateMonthKey } from '@/lib/monthly-goals';
+import {
+  formatMonthKey,
+  generateGoalKey,
+  parseGoalKey,
+  EMPRESAS,
+  DEFAULT_META_FATURAMENTO,
+  DEFAULT_META_VIRTUA,
+  type Empresa,
+} from '@/lib/monthly-goals';
 import { saveMetasToDatabase, deleteMetaFromDatabase } from '@/lib/db-service';
 import { MonthlyGoal } from '@/lib/types';
 import { supabaseExternal as supabase } from '@/integrations/supabase/external-client';
 import { Database } from '@/integrations/supabase/types';
 import { NumericFormat } from "react-number-format";
+import { MultiSelectFilter } from './MultiSelectFilter';
+import { parseBindings, joinBindings } from '@/lib/utils';
 
 
 interface ProfileUser {
@@ -73,10 +83,19 @@ function TabAdminInner() {
   const [isEditingGoals, setIsEditingGoals] = useState(false);
 
   const [addGoalOpen, setAddGoalOpen] = useState(false);
-  const [newGoalMonth, setNewGoalMonth] = useState('');
-  const [newGoalFat, setNewGoalFat] = useState<number | undefined>(undefined);
-  const [newGoalVendas, setNewGoalVendas] = useState('');
-  const [newGoalVirtua, setNewGoalVirtua] = useState('');
+  const currentMonthInput = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+  const [newGoalMonth, setNewGoalMonth] = useState<string>(currentMonthInput);
+  const [newGoalEmpresa, setNewGoalEmpresa] = useState<Empresa>('RDT');
+  const [newGoalFat, setNewGoalFat] = useState<number | undefined>(DEFAULT_META_FATURAMENTO);
+  const [newGoalFatSup, setNewGoalFatSup] = useState<number | undefined>(undefined);
+  const [newGoalVirtua, setNewGoalVirtua] = useState<number | undefined>(DEFAULT_META_VIRTUA);
+  const [newGoalVirtuaSup, setNewGoalVirtuaSup] = useState<number | undefined>(undefined);
+  // Track manual edits so auto-derived per-supervisor values don't overwrite the user's input
+  const fatSupTouchedRef = useState({ current: false })[0];
+  const virtuaSupTouchedRef = useState({ current: false })[0];
 
   // Lista de nomes de supervisores que existem na base de vendas
   const supervisorNamesFromData = useMemo(() => {
@@ -84,6 +103,45 @@ function TabAdminInner() {
     const set = new Set(importedData.vendas.map(v => v.supervisor).filter(Boolean));
     return Array.from(set).sort();
   }, [importedData]);
+
+  // Quantidade de supervisores ativos no MÊS ANTERIOR ao mês selecionado, por empresa.
+  // Serve como base para pré-preencher metas por supervisor: assume-se que a equipe
+  // do mês anterior é uma boa estimativa do tamanho atual da equipe.
+  const previousMonthInfo = useMemo(() => {
+    if (!newGoalMonth) return { ym: '', counts: { RDT: 0, VNA: 0 } as Record<Empresa, number> };
+    const [y, m] = newGoalMonth.split('-').map(Number);
+    const prev = new Date(y, m - 2, 1); // m é 1-based; -2 vai para o mês anterior
+    const prevY = prev.getFullYear();
+    const prevM = prev.getMonth() + 1;
+    const ym = `${prevY}-${String(prevM).padStart(2, '0')}`;
+    const counts: Record<Empresa, number> = { RDT: 0, VNA: 0 };
+    const setRDT = new Set<string>();
+    const setVNA = new Set<string>();
+    for (const v of importedData?.vendas || []) {
+      if (!v.supervisor || !v.data_instalacao) continue;
+      if (!v.data_instalacao.startsWith(ym)) continue;
+      const empresa = (v.empresa_venda || '').toUpperCase();
+      if (empresa.includes('VNA')) setVNA.add(v.supervisor);
+      else setRDT.add(v.supervisor);
+    }
+    counts.RDT = setRDT.size;
+    counts.VNA = setVNA.size;
+    return { ym, counts };
+  }, [importedData, newGoalMonth]);
+  const supervisorCountByEmpresa = previousMonthInfo.counts;
+
+  // Recalcula metas/supervisor automaticamente enquanto o usuário não tiver editado manualmente
+  useEffect(() => {
+    const n = supervisorCountByEmpresa[newGoalEmpresa] || 1;
+    if (!fatSupTouchedRef.current) {
+      const total = newGoalFat ?? 0;
+      setNewGoalFatSup(n > 0 ? Math.round((total / n) * 100) / 100 : 0);
+    }
+    if (!virtuaSupTouchedRef.current) {
+      const total = newGoalVirtua ?? 0;
+      setNewGoalVirtuaSup(n > 0 ? Math.ceil(total / n) : 0);
+    }
+  }, [newGoalFat, newGoalVirtua, newGoalEmpresa, supervisorCountByEmpresa, fatSupTouchedRef, virtuaSupTouchedRef]);
 
   // Lista de nomes de vendedores que existem na base de vendas
   const vendedorNamesFromData = useMemo(() => {
@@ -155,6 +213,7 @@ function TabAdminInner() {
   };
 
   const updateGoalField = (key: string, field: keyof MonthlyGoal, value: string) => {
+    if (field === 'empresa') return; // empresa é definida na criação
     const numVal = parseFloat(value) || 0;
     setEditingGoals(prev => ({
       ...prev,
@@ -174,17 +233,19 @@ function TabAdminInner() {
   const handleAddGoal = async () => {
     if (!newGoalMonth) return;
     const [year, month] = newGoalMonth.split('-');
-    const key = generateMonthKey(parseInt(year), parseInt(month));
+    const key = generateGoalKey(parseInt(year), parseInt(month), newGoalEmpresa);
 
     if (monthlyGoals[key]) {
-      toast.error('Este mês já possui meta cadastrada.');
+      toast.error(`Já existe meta de ${newGoalEmpresa} para este mês.`);
       return;
     }
 
     const newGoal: MonthlyGoal = {
+      empresa: newGoalEmpresa,
       meta_faturamento: newGoalFat || 0,
-      meta_total_vendas: parseFloat(newGoalVendas) || 0,
-      meta_vendas_virtua: parseFloat(newGoalVirtua) || 0,
+      meta_faturamento_supervisor: newGoalFatSup || 0,
+      meta_vendas_virtua: newGoalVirtua || 0,
+      meta_vendas_virtua_supervisor: newGoalVirtuaSup || 0,
     };
 
     const updated = { ...monthlyGoals, [key]: newGoal };
@@ -199,10 +260,13 @@ function TabAdminInner() {
     }
 
     setAddGoalOpen(false);
-    setNewGoalMonth('');
-    setNewGoalFat(undefined);
-    setNewGoalVendas('');
-    setNewGoalVirtua('');
+    // Reset para próximo cadastro
+    setNewGoalMonth(currentMonthInput);
+    setNewGoalEmpresa('RDT');
+    setNewGoalFat(DEFAULT_META_FATURAMENTO);
+    setNewGoalVirtua(DEFAULT_META_VIRTUA);
+    fatSupTouchedRef.current = false;
+    virtuaSupTouchedRef.current = false;
   };
 
   const approveUser = async (id: string) => {
@@ -307,8 +371,8 @@ function TabAdminInner() {
     toast.success('Perfil alterado com sucesso!');
   };
 
-  const linkSupervisor = async (userId: string, supervisorName: string | null) => {
-    const value = supervisorName === '__none__' ? null : supervisorName;
+  const linkSupervisores = async (userId: string, supervisorNames: string[]) => {
+    const value = joinBindings(supervisorNames);
 
     const { error } = await supabase
       .from('profiles')
@@ -321,7 +385,7 @@ function TabAdminInner() {
     }
 
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, nome_supervisor_vinculado: value } : u));
-    toast.success(value ? `Vinculado ao supervisor "${value}"` : 'Vínculo removido');
+    toast.success(value ? `Vinculado a ${supervisorNames.length} supervisor(es)` : 'Vínculo removido');
   };
 
   const linkVendedor = async (userId: string, vendedorName: string | null) => {
@@ -388,23 +452,28 @@ function TabAdminInner() {
             <thead>
               <tr>
                 <th>Mês</th>
-                <th>Meta Faturamento</th>
-                <th>Meta Total Vendas</th>
-                <th>Meta Vendas Internet</th>
+                <th>Empresa</th>
+                <th>Faturamento</th>
+                <th>Fat./Supervisor</th>
+                <th>Qtd. Virtua</th>
+                <th>Virtua/Supervisor</th>
                 {isEditingGoals && <th className="w-10"></th>}
               </tr>
             </thead>
             <tbody>
               {sortedGoalKeys.map(key => {
                 const goal = displayGoals[key];
+                const parsed = parseGoalKey(key);
                 return (
                   <tr key={key}>
-                    <td className="text-xs font-medium">{formatMonthKey(key)}</td>
+                    <td className="text-xs font-medium">{parsed ? `${formatMonthKey(`${parsed.year}-${String(parsed.month).padStart(2,'0')}`)}` : key}</td>
+                    <td className="text-xs font-semibold">{goal.empresa}</td>
                     {isEditingGoals ? (
                       <>
                         <td><Input type="number" className="h-7 text-xs w-32" value={goal.meta_faturamento} onChange={e => updateGoalField(key, 'meta_faturamento', e.target.value)} /></td>
-                        <td><Input type="number" className="h-7 text-xs w-24" value={goal.meta_total_vendas} onChange={e => updateGoalField(key, 'meta_total_vendas', e.target.value)} /></td>
+                        <td><Input type="number" className="h-7 text-xs w-28" value={goal.meta_faturamento_supervisor} onChange={e => updateGoalField(key, 'meta_faturamento_supervisor', e.target.value)} /></td>
                         <td><Input type="number" className="h-7 text-xs w-24" value={goal.meta_vendas_virtua} onChange={e => updateGoalField(key, 'meta_vendas_virtua', e.target.value)} /></td>
+                        <td><Input type="number" className="h-7 text-xs w-24" value={goal.meta_vendas_virtua_supervisor} onChange={e => updateGoalField(key, 'meta_vendas_virtua_supervisor', e.target.value)} /></td>
                         <td>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeGoalMonth(key)}>
                             <Trash2 className="h-3 w-3" />
@@ -414,8 +483,9 @@ function TabAdminInner() {
                     ) : (
                       <>
                         <td className="text-xs tabular-nums">{fmt(goal.meta_faturamento)}</td>
-                        <td className="text-xs tabular-nums">{goal.meta_total_vendas}</td>
+                        <td className="text-xs tabular-nums">{fmt(goal.meta_faturamento_supervisor)}</td>
                         <td className="text-xs tabular-nums">{goal.meta_vendas_virtua}</td>
+                        <td className="text-xs tabular-nums">{goal.meta_vendas_virtua_supervisor}</td>
                       </>
                     )}
                   </tr>
@@ -423,7 +493,7 @@ function TabAdminInner() {
               })}
               {sortedGoalKeys.length === 0 && (
                 <tr>
-                  <td colSpan={isEditingGoals ? 5 : 4} className="text-center text-xs text-muted-foreground py-8">
+                  <td colSpan={isEditingGoals ? 7 : 6} className="text-center text-xs text-muted-foreground py-8">
                     Nenhuma meta configurada. Clique em "Adicionar Meta" para começar.
                   </td>
                 </tr>
@@ -435,10 +505,13 @@ function TabAdminInner() {
         <div className="space-y-2 md:hidden">
           {sortedGoalKeys.map(key => {
             const goal = displayGoals[key];
+            const parsed = parseGoalKey(key);
             return (
               <div key={key} className="bg-surface rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">{formatMonthKey(key)}</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {parsed ? `${formatMonthKey(`${parsed.year}-${String(parsed.month).padStart(2,'0')}`)} · ${goal.empresa}` : key}
+                  </span>
                   {isEditingGoals && (
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeGoalMonth(key)}>
                       <Trash2 className="h-3 w-3" />
@@ -452,27 +525,35 @@ function TabAdminInner() {
                       <Input type="number" className="h-7 text-xs" value={goal.meta_faturamento} onChange={e => updateGoalField(key, 'meta_faturamento', e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-[9px] text-muted-foreground uppercase">Total Vendas</label>
-                      <Input type="number" className="h-7 text-xs" value={goal.meta_total_vendas} onChange={e => updateGoalField(key, 'meta_total_vendas', e.target.value)} />
+                      <label className="text-[9px] text-muted-foreground uppercase">Fat./Supervisor</label>
+                      <Input type="number" className="h-7 text-xs" value={goal.meta_faturamento_supervisor} onChange={e => updateGoalField(key, 'meta_faturamento_supervisor', e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-[9px] text-muted-foreground uppercase">Vendas Internet</label>
+                      <label className="text-[9px] text-muted-foreground uppercase">Qtd. Virtua</label>
                       <Input type="number" className="h-7 text-xs" value={goal.meta_vendas_virtua} onChange={e => updateGoalField(key, 'meta_vendas_virtua', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-muted-foreground uppercase">Virtua/Supervisor</label>
+                      <Input type="number" className="h-7 text-xs" value={goal.meta_vendas_virtua_supervisor} onChange={e => updateGoalField(key, 'meta_vendas_virtua_supervisor', e.target.value)} />
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-[9px] text-muted-foreground uppercase">Faturamento</p>
                       <p className="text-xs font-semibold tabular-nums">{fmt(goal.meta_faturamento)}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-muted-foreground uppercase">Vendas</p>
-                      <p className="text-xs font-semibold tabular-nums">{goal.meta_total_vendas}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase">Fat./Supervisor</p>
+                      <p className="text-xs font-semibold tabular-nums">{fmt(goal.meta_faturamento_supervisor)}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-muted-foreground uppercase">Internet</p>
+                      <p className="text-[9px] text-muted-foreground uppercase">Qtd. Virtua</p>
                       <p className="text-xs font-semibold tabular-nums">{goal.meta_vendas_virtua}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-muted-foreground uppercase">Virtua/Sup.</p>
+                      <p className="text-xs font-semibold tabular-nums">{goal.meta_vendas_virtua_supervisor}</p>
                     </div>
                   </div>
                 )}
@@ -490,19 +571,40 @@ function TabAdminInner() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-foreground">Adicionar Meta</DialogTitle>
-            <DialogDescription>Preencha os dados da meta mensal.</DialogDescription>
+            <DialogDescription>Preencha os dados da meta mensal por empresa.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Mês/Ano</label>
-              <Input type="month" className="mt-1" value={newGoalMonth} onChange={e => setNewGoalMonth(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Mês/Ano</label>
+                <Input type="month" className="mt-1" value={newGoalMonth} onChange={e => setNewGoalMonth(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Empresa</label>
+                <Select value={newGoalEmpresa} onValueChange={(v) => setNewGoalEmpresa(v as Empresa)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EMPRESAS.map(e => (
+                      <SelectItem key={e} value={e}>{e}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              Supervisores em {newGoalEmpresa} no mês anterior
+              {previousMonthInfo.ym ? ` (${previousMonthInfo.ym})` : ''}: <span className="font-semibold">{supervisorCountByEmpresa[newGoalEmpresa] || 0}</span>
+              {' '}— usado como base para os pré-preenchimentos por supervisor.
+            </p>
+
             <div>
-              <label className="text-xs text-muted-foreground">Meta Faturamento (R$)</label>
+              <label className="text-xs text-muted-foreground">Meta de faturamento geral (R$)</label>
               <NumericFormat
                 customInput={Input}
                 className="mt-1"
-                placeholder="Ex: R$ 10.000,00"
+                placeholder="Ex: R$ 60.000,00"
                 thousandSeparator="."
                 decimalSeparator=","
                 prefix="R$ "
@@ -510,18 +612,56 @@ function TabAdminInner() {
                 fixedDecimalScale
                 allowNegative={false}
                 value={newGoalFat}
+                onValueChange={(values) => setNewGoalFat(values.floatValue)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">
+                Meta de faturamento por supervisor (R$)
+                <span className="ml-1 text-[10px]">· {supervisorCountByEmpresa[newGoalEmpresa] || 0} supervisor(es) no mês anterior</span>
+              </label>
+              <NumericFormat
+                customInput={Input}
+                className="mt-1"
+                placeholder="Auto"
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                allowNegative={false}
+                value={newGoalFatSup}
                 onValueChange={(values) => {
-                  setNewGoalFat(values.floatValue);
+                  fatSupTouchedRef.current = true;
+                  setNewGoalFatSup(values.floatValue);
                 }}
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Meta Total Vendas</label>
-              <Input type="number" className="mt-1" placeholder="Ex: 200" value={newGoalVendas} onChange={e => setNewGoalVendas(e.target.value)} />
+              <label className="text-xs text-muted-foreground">Meta de quantidade de Virtua</label>
+              <Input
+                type="number"
+                className="mt-1"
+                placeholder="Ex: 300"
+                value={newGoalVirtua ?? ''}
+                onChange={e => setNewGoalVirtua(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
+              />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Meta Vendas Internet</label>
-              <Input type="number" className="mt-1" placeholder="Ex: 120" value={newGoalVirtua} onChange={e => setNewGoalVirtua(e.target.value)} />
+              <label className="text-xs text-muted-foreground">
+                Meta de quantidade de Virtua por supervisor
+                <span className="ml-1 text-[10px]">· {supervisorCountByEmpresa[newGoalEmpresa] || 0} supervisor(es) no mês anterior</span>
+              </label>
+              <Input
+                type="number"
+                className="mt-1"
+                placeholder="Auto"
+                value={newGoalVirtuaSup ?? ''}
+                onChange={e => {
+                  virtuaSupTouchedRef.current = true;
+                  setNewGoalVirtuaSup(e.target.value === '' ? undefined : parseInt(e.target.value, 10));
+                }}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -621,20 +761,15 @@ function TabAdminInner() {
                   {u.perfil === 'supervisor' && (
                     <div className="flex items-center gap-1.5">
                       <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <Select
-                        value={u.nome_supervisor_vinculado || '__none__'}
-                        onValueChange={v => linkSupervisor(u.id, v)}
-                      >
-                        <SelectTrigger className="h-7 text-xs flex-1">
-                          <SelectValue placeholder="Vincular supervisor..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">Sem vínculo</SelectItem>
-                          {supervisorNamesFromData.map(name => (
-                            <SelectItem key={name} value={name}>{name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex-1">
+                        <MultiSelectFilter
+                          label="Supervisor(es)"
+                          options={supervisorNamesFromData}
+                          selected={parseBindings(u.nome_supervisor_vinculado)}
+                          onChange={(sel) => linkSupervisores(u.id, sel)}
+                          triggerClassName="h-7 sm:h-7"
+                        />
+                      </div>
                     </div>
                   )}
                   {/* Vinculação de vendedor (mobile) */}
@@ -700,20 +835,15 @@ function TabAdminInner() {
                       </td>
                       <td>
                         {u.perfil === 'supervisor' ? (
-                          <Select
-                            value={u.nome_supervisor_vinculado || '__none__'}
-                            onValueChange={v => linkSupervisor(u.id, v)}
-                          >
-                            <SelectTrigger className="h-7 text-xs w-44">
-                              <SelectValue placeholder="Vincular..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">Sem vínculo</SelectItem>
-                              {supervisorNamesFromData.map(name => (
-                                <SelectItem key={name} value={name}>{name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="w-44">
+                            <MultiSelectFilter
+                              label="Supervisor(es)"
+                              options={supervisorNamesFromData}
+                              selected={parseBindings(u.nome_supervisor_vinculado)}
+                              onChange={(sel) => linkSupervisores(u.id, sel)}
+                              triggerClassName="h-7 sm:h-7"
+                            />
+                          </div>
                         ) : (u.perfil === 'vendedor' || u.perfil === 'consultor') ? (
                           <Select
                             value={u.nome_vendedor_vinculado || '__none__'}

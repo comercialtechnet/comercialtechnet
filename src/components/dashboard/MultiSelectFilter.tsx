@@ -12,9 +12,10 @@ interface MultiSelectFilterProps {
     selected: string[];
     onChange: (selected: string[]) => void;
     className?: string;
+    triggerClassName?: string;
 }
 
-export function MultiSelectFilter({ label, options, selected, onChange, className }: MultiSelectFilterProps) {
+export function MultiSelectFilter({ label, options, selected, onChange, className, triggerClassName }: MultiSelectFilterProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);
@@ -30,8 +31,15 @@ export function MultiSelectFilter({ label, options, selected, onChange, classNam
             if (!el) return;
             const r = el.getBoundingClientRect();
             const dropdownW = 224; // w-56
+            const dropdownH = 280; // estimativa: search + lista (max-h-52) + botões
             const left = Math.min(r.left, window.innerWidth - dropdownW - 8);
-            setPos({ top: r.bottom + 4, left: Math.max(8, left), width: dropdownW });
+            const spaceBelow = window.innerHeight - r.bottom;
+            const spaceAbove = r.top;
+            const openUp = spaceBelow < dropdownH && spaceAbove > spaceBelow;
+            const top = openUp
+                ? Math.max(8, r.top - dropdownH - 4)
+                : Math.min(r.bottom + 4, window.innerHeight - dropdownH - 8);
+            setPos({ top, left: Math.max(8, left), width: dropdownW });
         };
         update();
         window.addEventListener('scroll', update, true);
@@ -85,7 +93,7 @@ export function MultiSelectFilter({ label, options, selected, onChange, classNam
         <Button
             variant="outline"
             size="sm"
-            className={`h-9 sm:h-8 text-xs justify-between gap-1 w-full font-normal ${selected.length > 0 ? 'border-primary/50 bg-primary/5 text-foreground' : ''}`}
+            className={`h-9 sm:h-8 text-xs justify-between gap-1 w-full font-normal ${selected.length > 0 ? 'border-primary/50 bg-primary/5 text-foreground' : ''} ${triggerClassName || ''}`}
             onClick={() => setOpen(!open)}
         >
             <span className="truncate flex items-center gap-1.5">

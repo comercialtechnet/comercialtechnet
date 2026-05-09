@@ -18,7 +18,11 @@ async function fetchAll<T>(
   } = {},
   onProgress?: (loaded: number, total: number) => void
 ): Promise<T[]> {
-  const PAGE_SIZE = query.pageSize ?? 1000;
+  const requestedPageSize = query.pageSize ?? 1000;
+  const PAGE_SIZE = Math.min(requestedPageSize, 1000);
+  if (requestedPageSize > 1000) {
+    console.warn(`[DB] Page size ajustado para evitar perda de dados em ${table}: solicitado=${requestedPageSize}, usado=${PAGE_SIZE}`);
+  }
 
   // Constrói a base da query para contar e buscar
   const buildQueryBase = () => {
@@ -38,16 +42,20 @@ async function fetchAll<T>(
 
   // 1. Pega o Count total primeiro
   const { count, error: countError } = await buildQueryBase().select('*', { count: 'exact', head: true });
-  if (countError) throw new Error(`Erro ao contar ${table}: ${countError.message}`);
+  if (countError) {
+    console.error(`[DB] Erro ao contar registros de ${table}`, { table, filters: query.filters, error: countError });
+    throw new Error(`Erro ao contar ${table}: ${countError.message}`);
+  }
 
   if (!count || count === 0) return [];
+  console.info(`[DB] Carregando ${table}`, { total: count, pageSize: PAGE_SIZE, filtros: query.filters ?? [] });
 
   // 2. Prepara todas as páginas
   const totalPages = Math.ceil(count / PAGE_SIZE);
   const tasks = [];
   for (let page = 0; page < totalPages; page++) {
     const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
+      const to = Math.min(from + PAGE_SIZE - 1, count - 1);
     tasks.push(async () => {
       let q = buildQueryBase().select(query.select || '*');
       if (query.order) {
@@ -57,8 +65,16 @@ async function fetchAll<T>(
       // quando há empates ou NULLs na coluna de ordenação principal).
       q = q.order('id', { ascending: true });
       const { data, error } = await q.range(from, to);
-      if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
-      return (data || []) as T[];
+        if (error) {
+          console.error(`[DB] Erro ao buscar página de ${table}`, { table, from, to, filters: query.filters, error });
+          throw new Error(`Erro ao buscar ${table}: ${error.message}`);
+        }
+        const rows = (data || []) as T[];
+        const expectedRows = to - from + 1;
+        if (rows.length !== expectedRows && to < count - 1) {
+          console.warn(`[DB] Página incompleta em ${table}`, { from, to, esperado: expectedRows, recebido: rows.length });
+        }
+        return rows;
     });
   }
 
@@ -330,7 +346,7 @@ export async function loadVendasFromDatabase(profile?: UserInfo | null, onProgre
   const vendasRaw = await fetchAll<RawVendaWithItens>('vendas', {
     select: vendasSelect,
     order: { column: 'data_instalacao', ascending: false },
-    pageSize: 2000,
+    pageSize: 1000,
     filters
   }, (loaded, total) => {
     const pct = Math.round(35 + (loaded / Math.max(total, 1)) * 50);
@@ -398,6 +414,15 @@ export async function loadVendasFromDatabase(profile?: UserInfo | null, onProgre
     flags_json: (it.flags_json as Record<string, boolean> | undefined) || {},
   }));
 
+  const dateKeys = vendas.map(v => v.data_instalacao).filter(Boolean).sort();
+  console.info('[DB] Vendas carregadas com sucesso', {
+    vendas: vendas.length,
+    itens: itens.length,
+    primeiraData: dateKeys[0] ?? null,
+    ultimaData: dateKeys[dateKeys.length - 1] ?? null,
+    filtrosServidor: filters,
+  });
+
   return { vendas, itens };
 }
 
@@ -408,31 +433,53 @@ export async function loadMetasFromDatabase(): Promise<Record<string, MonthlyGoa
     .from('metas_mensais')
     .select('*');
 
-  if (error || !data) return {};
+  if (error || !data) {
+    console.error('[DB] Erro ao carregar metas mensais', error);
+    return {};
+  }
 
   const goals: Record<string, MonthlyGoal> = {};
-  data.forEach((row: { periodo_ano: number | null; periodo_mes: number | null; meta_faturamento: number | null; meta_total_vendas: number | null; meta_vendas_virtua: number | null }) => {
-    if (row.periodo_ano && row.periodo_mes) {
-      const key = `${row.periodo_ano}-${String(row.periodo_mes).padStart(2, '0')}`;
-      goals[key] = {
-        meta_faturamento: Number(row.meta_faturamento) || 0,
-        meta_total_vendas: Number(row.meta_total_vendas) || 0,
-        meta_vendas_virtua: Number(row.meta_vendas_virtua) || 0,
-      };
-    }
+  type MetaRow = {
+    periodo_ano: number | null;
+    periodo_mes: number | null;
+    empresa?: string | null;
+    meta_faturamento: number | null;
+    meta_faturamento_supervisor?: number | null;
+    meta_vendas_virtua: number | null;
+    meta_vendas_virtua_supervisor?: number | null;
+  };
+  (data as MetaRow[]).forEach((row) => {
+    if (!row.periodo_ano || !row.periodo_mes) return;
+    const empresa = (row.empresa === 'VNA' ? 'VNA' : 'RDT') as 'RDT' | 'VNA';
+    const key = `${row.periodo_ano}-${String(row.periodo_mes).padStart(2, '0')}-${empresa}`;
+    goals[key] = {
+      empresa,
+      meta_faturamento: Number(row.meta_faturamento) || 0,
+      meta_faturamento_supervisor: Number(row.meta_faturamento_supervisor) || 0,
+      meta_vendas_virtua: Number(row.meta_vendas_virtua) || 0,
+      meta_vendas_virtua_supervisor: Number(row.meta_vendas_virtua_supervisor) || 0,
+    };
   });
   return goals;
 }
 
+function parseGoalKeyOrThrow(key: string): { ano: number; mes: number; empresa: 'RDT' | 'VNA' } {
+  const m = key.match(/^(\d{4})-(\d{2})-(RDT|VNA)$/);
+  if (!m) throw new Error(`Chave de meta inválida: ${key}. Esperado YYYY-MM-EMPRESA.`);
+  return { ano: parseInt(m[1], 10), mes: parseInt(m[2], 10), empresa: m[3] as 'RDT' | 'VNA' };
+}
+
 export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
   const rows = Object.entries(goals).map(([key, goal]) => {
-    const [ano, mes] = key.split('-').map(Number);
+    const { ano, mes, empresa } = parseGoalKeyOrThrow(key);
     return {
       periodo_ano: ano,
       periodo_mes: mes,
+      empresa,
       meta_faturamento: goal.meta_faturamento,
-      meta_total_vendas: goal.meta_total_vendas,
+      meta_faturamento_supervisor: goal.meta_faturamento_supervisor,
       meta_vendas_virtua: goal.meta_vendas_virtua,
+      meta_vendas_virtua_supervisor: goal.meta_vendas_virtua_supervisor,
     };
   });
 
@@ -440,16 +487,17 @@ export async function saveMetasToDatabase(goals: Record<string, MonthlyGoal>) {
 
   const { error } = await supabase
     .from('metas_mensais')
-    .upsert(rows, { onConflict: 'periodo_ano,periodo_mes' });
+    .upsert(rows, { onConflict: 'periodo_ano,periodo_mes,empresa' });
 
   if (error) throw new Error(`Erro ao salvar metas: ${error.message}`);
 }
 
 export async function deleteMetaFromDatabase(key: string) {
-  const [ano, mes] = key.split('-').map(Number);
+  const { ano, mes, empresa } = parseGoalKeyOrThrow(key);
   await supabase
     .from('metas_mensais')
     .delete()
     .eq('periodo_ano', ano)
-    .eq('periodo_mes', mes);
+    .eq('periodo_mes', mes)
+    .eq('empresa', empresa);
 }
