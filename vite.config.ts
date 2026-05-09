@@ -11,7 +11,7 @@ export default defineConfig({
   },
   // Lovable Preview/Hosting serve o app pela raiz; manter base em subpasta
   // faz o preview procurar assets/rotas em /comercialtechnet/ e pode abrir em branco.
-  base: '/',
+  base: '/comercialtechnet/',
   server: {
     host: "::",
     port: 8080,
@@ -22,4 +22,4 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1500,
   },
-});
+});
