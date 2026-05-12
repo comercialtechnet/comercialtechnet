@@ -15,6 +15,7 @@ export const supabaseExternal: SupabaseClient = createClient(
       storage: localStorage,
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: false,
     },
   }
 );
