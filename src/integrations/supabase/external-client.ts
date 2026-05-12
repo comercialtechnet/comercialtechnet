@@ -1,27 +1,20 @@
-// Client for the external Supabase project (data operations: vendas, itens, metas, importações)
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const EXTERNAL_SUPABASE_URL = 'https://tbrdrutglvzrupkkvzhk.supabase.co';
-const EXTERNAL_SUPABASE_ANON_KEY = 'sb_publishable_agXtrf4zSNNvkZDoJuEr7A_WT_ZFCJD';
+const EXTERNAL_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const EXTERNAL_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-let client: SupabaseClient;
-try {
-  client = createClient(EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_ANON_KEY, {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  });
-} catch (e) {
-  console.error('Failed to create external Supabase client:', e);
-  client = createClient(EXTERNAL_SUPABASE_URL, EXTERNAL_SUPABASE_ANON_KEY, {
-    auth: {
-      storage: localStorage,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  });
+if (!EXTERNAL_SUPABASE_URL || !EXTERNAL_SUPABASE_ANON_KEY) {
+  throw new Error('Supabase environment variables are missing.');
 }
 
-export const supabaseExternal = client;
+export const supabaseExternal: SupabaseClient = createClient(
+  EXTERNAL_SUPABASE_URL,
+  EXTERNAL_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  }
+);
