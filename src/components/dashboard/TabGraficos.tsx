@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useFilteredData } from '@/lib/use-filtered-data';
 import { useFilters } from '@/lib/filters-context';
 import { formatPeriodLabel } from '@/lib/monthly-goals';
@@ -53,6 +53,21 @@ export function TabGraficos() {
 
   const currentLabel = formatPeriodLabel(filters.dataInicio) || 'Atual';
   const compLabel = formatPeriodLabel(filters.compDataInicio) || 'Anterior';
+  const formatTooltipDate = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    return (isoDate?: string) => {
+      if (!isoDate) return '';
+      const dt = new Date(`${isoDate}T12:00:00`);
+      if (Number.isNaN(dt.getTime())) return isoDate;
+      return formatter.format(dt).replace('-feira', '');
+    };
+  }, []);
 
   // Daily data - use day index (1,2,3...) so lines overlap properly
   const dailyByIndex = (vendas: Venda[]) => {
@@ -67,6 +82,7 @@ export function TabGraficos() {
     return Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, data], idx) => ({
       idx: idx + 1,
       date: `${date.slice(8)}/${date.slice(5, 7)}`,
+      tooltipDate: formatTooltipDate(date),
       ...data,
     }));
   };
@@ -79,6 +95,9 @@ export function TabGraficos() {
   const dailyData = Array.from({ length: maxLen }, (_, i) => ({
     idx: i + 1,
     date: currentDaily[i]?.date || compDailyRaw[i]?.date || '',
+    tooltipDate: currentDaily[i]?.tooltipDate || compDailyRaw[i]?.tooltipDate || '',
+    currentTooltipDate: currentDaily[i]?.tooltipDate || '',
+    compTooltipDate: compDailyRaw[i]?.tooltipDate || '',
     faturamento: currentDaily[i]?.faturamento || 0,
     vendas: currentDaily[i]?.vendas || 0,
     combos: currentDaily[i]?.combos || 0,
@@ -281,10 +300,13 @@ export function TabGraficos() {
               <Tooltip
                 trigger={tooltipTrigger}
                 {...chartTooltip}
-                labelFormatter={(label) => label}
-                formatter={(v: number, name: string) => {
-                  if (name.toLowerCase().includes('faturamento') || name === compLabel) return [fmt(v), titleCase(name)];
-                  return [`${v} vendas`, titleCase(name)];
+                labelFormatter={(label, payload) => payload?.[0]?.payload?.tooltipDate || label}
+                formatter={(v: number, name: string, entry) => {
+                  const isCompSeries = String(entry?.dataKey || '').startsWith('comp');
+                  const pointDate = isCompSeries ? entry?.payload?.compTooltipDate : entry?.payload?.currentTooltipDate;
+                  const labelWithDate = pointDate ? `${titleCase(name)} • ${pointDate}` : titleCase(name);
+                  if (name.toLowerCase().includes('faturamento') || name === compLabel) return [fmt(v), labelWithDate];
+                  return [`${v} vendas`, labelWithDate];
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 10 }} />
